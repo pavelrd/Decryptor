@@ -59,7 +59,21 @@ void MainWindow::on_pushButton_encrypt_clicked()
     uint8_t block[16] = {0};
     uint8_t encryptedBlock[16] = {0};
 
-    uint32_t j = 0;
+    // ------- Запись длины файла в начало первого блока, который будет зашифрован
+
+    uint32_t value = fileBytearray.length();
+
+    block[0] = value & 0xFF;
+
+    block[1] = ( value >> 8 ) & 0xFF;
+
+    block[2] = ( value >> 16 ) & 0xFF;
+
+    block[3] = ( value >> 24 ) & 0xFF;
+
+    // -------
+
+    uint32_t j = 4; // Начинаем запись файла с 5 байта блока, так как в первые 4 байта записан размер файла
 
     for( uint32_t i = 0 ; i < fileBytearray.length(); i++ )
     {
@@ -121,6 +135,7 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
     QFile decryptedFile(fileNamePath);
 
+
     if( !decryptedFile.open(QIODevice::WriteOnly|QIODevice::Truncate) )
     {
         // Ошибка при открытии файла
@@ -131,6 +146,8 @@ void MainWindow::on_pushButton_decrypt_clicked()
     uint8_t decryptedBlock[16] = {0};
 
     uint32_t j = 0;
+    uint32_t fileSize = 0;
+    uint32_t fileCounter = 0;
 
     for( uint32_t i = 0 ; i < fileBytearray.length(); i++ )
     {
@@ -146,7 +163,44 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
             g.decrypt(decryptedBlock, block);
 
-            decryptedFile.write((const char*)decryptedBlock, 16);
+            if( i < 16 )
+            {
+
+                // Первый блок, в нем первые 4 байта это длина файла, запоминаем эту длин
+
+                fileSize |= decryptedBlock[0];
+                fileSize |= ( ( (uint32_t) decryptedBlock[1] ) << 8 );
+                fileSize |= ( ( (uint32_t) decryptedBlock[2] ) << 16 );
+                fileSize |= ( ( (uint32_t) decryptedBlock[3] ) << 24 );
+
+                if( fileSize < 12 ) // Файл полностью помещается в первом блоке. Чтобы это условие было выполнено файл должен быть размера 16 - 4 = 12
+                {
+                    decryptedFile.write( (const char*) decryptedBlock + 4, fileSize );
+                    break;
+                }
+                else // Файл не помещается в одном блоке, запись уже считанной на текущий момент части файла.
+                {
+                   decryptedFile.write( (const char*) decryptedBlock + 4, 12 );
+                   fileCounter += 12;
+                }
+
+            }
+            else
+            {
+
+                // Второй и последующий блоки
+
+                if( (fileCounter + 16) < fileSize )
+                {
+                    decryptedFile.write((const char*)decryptedBlock, 16);
+                    fileCounter += 16;
+                }
+                else
+                {
+                    decryptedFile.write((const char*)decryptedBlock, fileSize - fileCounter);
+                }
+
+            }
 
             for( uint32_t indexClear = 0 ; indexClear < 16; indexClear++)
             {
@@ -157,16 +211,8 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
     }
 
-    if( j != 0 )
-    {
-
-        g.decrypt(decryptedBlock, block);
-
-        decryptedFile.write((const char*)decryptedBlock, 16);
-
-    }
-
     decryptedFile.close();
+
 }
 
 
