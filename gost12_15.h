@@ -22,9 +22,6 @@ public:
     void encrypt(uint8_t* encryptedBlock, uint8_t *block);
     void decrypt(uint8_t* block, uint8_t* encryptedBlock);
 
-    gost12_15() {}
-    ~gost12_15() {}
-
 private:
 
     vector<uint8_t> LSXEncryptData(vector<uint8_t> data, vector<vector<uint8_t>> roundKeys);

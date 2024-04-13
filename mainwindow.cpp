@@ -2,11 +2,10 @@
 #include "ui_mainwindow.h"
 #include "gost12_15.h"
 #include <QFileDialog>
+#include <QMessageBox>
 
 #include <QDebug>
 #include <QFile>
-
-gost12_15 g;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -41,6 +40,9 @@ void MainWindow::on_pushButton_encrypt_clicked()
     if( !file.open(QIODevice::ReadOnly | QIODevice::Unbuffered) )
     {
         // Ошибка при открытии файла
+        QMessageBox msgBox;
+        msgBox.setText("Ошибка при открытии файла, предназначенного для зашифрования!");
+        msgBox.exec();
         return;
     }
 
@@ -53,6 +55,11 @@ void MainWindow::on_pushButton_encrypt_clicked()
     if( !encryptedFile.open(QIODevice::WriteOnly|QIODevice::Truncate) )
     {
         // Ошибка при открытии файла
+
+        QMessageBox msgBox;
+        msgBox.setText("Ошибка при открытии файла для зашифрованной информации!");
+        msgBox.exec();
+
         return;
     }
 
@@ -75,6 +82,12 @@ void MainWindow::on_pushButton_encrypt_clicked()
 
     uint32_t j = 4; // Начинаем запись файла с 5 байта блока, так как в первые 4 байта записан размер файла
 
+    gost12_15* g = new gost12_15();
+
+    QString key = ui->lineEdit_key->text();
+
+    g->setKey(key.toStdString().c_str());
+
     for( uint32_t i = 0 ; i < fileBytearray.length(); i++ )
     {
 
@@ -87,7 +100,7 @@ void MainWindow::on_pushButton_encrypt_clicked()
 
             j = 0;
 
-            g.encrypt(encryptedBlock, block);
+            g->encrypt(encryptedBlock, block);
 
             encryptedFile.write((const char*)encryptedBlock, 16);
 
@@ -103,11 +116,13 @@ void MainWindow::on_pushButton_encrypt_clicked()
     if( j != 0 )
     {
 
-        g.encrypt(encryptedBlock, block);
+        g->encrypt(encryptedBlock, block);
 
         encryptedFile.write((const char*)encryptedBlock, 16);
 
     }
+
+    delete g;
 
     encryptedFile.close();
 
@@ -123,13 +138,23 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
     if( !file.open(QIODevice::ReadOnly | QIODevice::Unbuffered) )
     {
-        // Ошибка при открытии файла
+        QMessageBox msgBox;
+        msgBox.setText("Ошибка при открытии зашифрованного файла");
+        msgBox.exec();
         return;
     }
 
     QByteArray fileBytearray = file.readAll();
 
     file.close();
+
+    if( fileBytearray.size() % 16 != 0 )
+    {
+        QMessageBox msgBox;
+        msgBox.setText("Зашифроанный файл поврежден, его размер не кратен 16 байтам!");
+        msgBox.exec();
+        return;
+    }
 
     fileNamePath.chop(6);
 
@@ -138,7 +163,9 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
     if( !decryptedFile.open(QIODevice::WriteOnly|QIODevice::Truncate) )
     {
-        // Ошибка при открытии файла
+        QMessageBox msgBox;
+        msgBox.setText("Ошибка при открытии файла для расшифровки");
+        msgBox.exec();
         return;
     }
 
@@ -148,6 +175,12 @@ void MainWindow::on_pushButton_decrypt_clicked()
     uint32_t j = 0;
     uint32_t fileSize = 0;
     uint32_t fileCounter = 0;
+
+    gost12_15* g = new gost12_15();
+
+    QString key = ui->lineEdit_key->text();
+
+    g->setKey(key.toStdString().c_str());
 
     for( uint32_t i = 0 ; i < fileBytearray.length(); i++ )
     {
@@ -160,9 +193,18 @@ void MainWindow::on_pushButton_decrypt_clicked()
         {
 
             j = 0;
-
-            g.decrypt(decryptedBlock, block);
-
+            qDebug() << "BLOCK-";
+            for( auto elem : block)
+            {
+                qDebug() << hex <<elem << " ";
+            }
+            g->decrypt(decryptedBlock, block);
+            qDebug() << "DECBLOCK-";
+            for( auto elem : decryptedBlock)
+            {
+                qDebug() << hex <<elem << " ";
+            }
+            qDebug();
             if( i < 16 )
             {
 
@@ -211,6 +253,8 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
     }
 
+    delete g;
+
     decryptedFile.close();
 
 }
@@ -219,9 +263,11 @@ void MainWindow::on_pushButton_decrypt_clicked()
 void MainWindow::on_pushButton_setKey_clicked()
 {
 
-    QString key = ui->lineEdit_key->text();
+   // QString key = ui->lineEdit_key->text();
 
-    g.setKey(key.toStdString().c_str());
+   // g.setKey(key.toStdString().c_str());
+
+   // keySetted = true;
 
 }
 
