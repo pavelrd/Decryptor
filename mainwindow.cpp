@@ -35,6 +35,14 @@ void MainWindow::on_pushButton_chooseFile_clicked()
 
 void MainWindow::on_pushButton_encrypt_clicked()
 {
+    if( !g.isKeySetted() )
+    {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Decryptor");
+        msgBox.setText("Не задан ключ!");
+        msgBox.exec();
+        return;
+    }
 
     QString fileNamePath = ui->lineEdit_inputFile->text();
 
@@ -44,6 +52,7 @@ void MainWindow::on_pushButton_encrypt_clicked()
     {
         // Ошибка при открытии файла
         QMessageBox msgBox;
+        msgBox.setWindowTitle("Decryptor");
         msgBox.setText("Ошибка при открытии файла, предназначенного для зашифрования!");
         msgBox.exec();
         return;
@@ -85,6 +94,10 @@ void MainWindow::on_pushButton_encrypt_clicked()
 
     uint32_t j = 4; // Начинаем запись файла с 5 байта блока, так как в первые 4 байта записан размер файла
 
+    ui->progressBar_status->setEnabled(true);
+
+    ui->progressBar_status->setValue(0);
+
     for( uint32_t i = 0 ; i < fileBytearray.length(); i++ )
     {
 
@@ -106,6 +119,8 @@ void MainWindow::on_pushButton_encrypt_clicked()
                 block[indexClear] = 0x00;
             }
 
+            ui->progressBar_status->setValue( ((double)i) / fileBytearray.length() * 100 );
+
         }
 
     }
@@ -119,6 +134,15 @@ void MainWindow::on_pushButton_encrypt_clicked()
 
     }
 
+    ui->progressBar_status->setValue( 100 );
+
+    QMessageBox msgBox;
+    msgBox.setWindowTitle("Decryptor");
+    msgBox.setText("Шифрование файла завершено!");
+    msgBox.exec();
+
+    ui->progressBar_status->setEnabled(false);
+
     encryptedFile.close();
 
 }
@@ -126,6 +150,15 @@ void MainWindow::on_pushButton_encrypt_clicked()
 
 void MainWindow::on_pushButton_decrypt_clicked()
 {
+    if( !g.isKeySetted() )
+    {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Decryptor");
+        msgBox.setText("Не задан ключ!");
+        msgBox.exec();
+        return;
+    }
+
 
     QString fileNamePath = ui->lineEdit_inputFile->text();
 
@@ -134,6 +167,7 @@ void MainWindow::on_pushButton_decrypt_clicked()
     if( !file.open(QIODevice::ReadOnly | QIODevice::Unbuffered) )
     {
         QMessageBox msgBox;
+        msgBox.setWindowTitle("Decryptor");
         msgBox.setText("Ошибка при открытии зашифрованного файла");
         msgBox.exec();
         return;
@@ -146,6 +180,7 @@ void MainWindow::on_pushButton_decrypt_clicked()
     if( fileBytearray.size() % 16 != 0 )
     {
         QMessageBox msgBox;
+        msgBox.setWindowTitle("Decryptor");
         msgBox.setText("Зашифрованный файл поврежден, его размер не кратен 16 байтам!");
         msgBox.exec();
         return;
@@ -159,6 +194,7 @@ void MainWindow::on_pushButton_decrypt_clicked()
     if( !decryptedFile.open(QIODevice::WriteOnly|QIODevice::Truncate) )
     {
         QMessageBox msgBox;
+        msgBox.setWindowTitle("Decryptor");
         msgBox.setText("Ошибка при открытии файла для расшифровки");
         msgBox.exec();
         return;
@@ -170,6 +206,8 @@ void MainWindow::on_pushButton_decrypt_clicked()
     uint32_t j = 0;
     uint32_t fileSize = 0;
     uint32_t fileCounter = 0;
+
+    ui->progressBar_status->setEnabled(true);
 
     for( uint32_t i = 0 ; i < fileBytearray.length(); i++ )
     {
@@ -229,11 +267,49 @@ void MainWindow::on_pushButton_decrypt_clicked()
                 block[indexClear] = 0x00;
             }
 
+            ui->progressBar_status->setValue( ((double)i) / fileBytearray.length() * 100 );
+
         }
 
     }
 
     decryptedFile.close();
+
+    ui->progressBar_status->setValue( 100 );
+
+
+    /*
+    QString str = "Дешифрование файла завершено!";
+
+    int spacesNum = ( ui->statusbar->size().width() - (str.length()/2) ) / 2;
+
+    QString str2;
+
+    if(spacesNum > 1 )
+    {
+
+        for( int i = 0 ; i < spacesNum; i++ )
+        {
+            str2 += " ";
+        }
+
+    }
+
+    str2 += str;
+
+    ui->statusbar->showMessage(str2, 10000);
+
+    QLabel* statusLabel = new QLabel("Дешифрование файла завершено!");
+    statusBar()->addWidget(statusLabel,1);
+    */
+
+    QMessageBox msgBox;
+    msgBox.setWindowTitle("Decryptor");
+    msgBox.setText("Дешифрование файла завершено!");
+    msgBox.exec();
+
+
+    ui->progressBar_status->setEnabled(false);
 
 }
 
@@ -248,6 +324,7 @@ void MainWindow::on_pushButton_setKey_clicked()
    if(ui->lineEdit_key->text().isEmpty())
    {
        QMessageBox msgBox;
+       msgBox.setWindowTitle("Decryptor");
        msgBox.setText("Заполните поле ключа!");
        msgBox.exec();
        return;
@@ -260,6 +337,7 @@ void MainWindow::on_pushButton_setKey_clicked()
        ui->lineEdit_key->setStyleSheet("QLineEdit { background: rgb(255, 255, 255); selection-background-color: rgb(0, 0, 255); }");
        ui->pushButton_setKey->setText("Задать");
        keySetted = 1;
+       ui->progressBar_status->setValue( 0 );
    }
    else
    {

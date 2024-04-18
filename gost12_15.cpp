@@ -681,6 +681,8 @@ void gost12_15::setKey(const char* key)
 
     roundKeys = generatingRoundKeys(generalKey);
 
+    keySetted = true;
+
 }
 
 void gost12_15::encrypt(uint8_t* encryptedBlock, uint8_t* block)
@@ -725,4 +727,9 @@ void gost12_15::decrypt(uint8_t* block, uint8_t* encryptedBlock)
         block[i] = decryptedData[i];
     }
 
+}
+
+bool gost12_15::isKeySetted()
+{
+    return keySetted;
 }

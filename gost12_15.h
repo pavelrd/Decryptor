@@ -21,6 +21,7 @@ public:
     void setKey(const char *key);
     void encrypt(uint8_t* encryptedBlock, uint8_t *block);
     void decrypt(uint8_t* block, uint8_t* encryptedBlock);
+    bool isKeySetted();
 
 private:
 
@@ -66,6 +67,8 @@ private:
 
     vector<vector<uint8_t>> roundConsts;
     vector<vector<uint8_t>> roundKeys;
+
+    bool keySetted = false;
 
     //Коэффициенты в функции l из линейного перемешивания
     vector<uint8_t> lCoefficients = {
