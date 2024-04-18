@@ -670,7 +670,7 @@ vector<uint8_t> gost12_15::getImitoKey(vector<vector<uint8_t>> roundKeys) {
 void gost12_15::setKey(const char* key)
 {
 
-    vector<uint8_t> generalKey(16, 0);
+    vector<uint8_t> generalKey(32, 0);
 
     for( unsigned int i = 0 ; ( i < strlen(key) ) && ( i < 32) ; i++ )
     {
