@@ -7,6 +7,8 @@
 #include <QDebug>
 #include <QFile>
 
+gost12_15 g;
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -82,12 +84,6 @@ void MainWindow::on_pushButton_encrypt_clicked()
 
     uint32_t j = 4; // Начинаем запись файла с 5 байта блока, так как в первые 4 байта записан размер файла
 
-    gost12_15* g = new gost12_15();
-
-    QString key = ui->lineEdit_key->text();
-
-    g->setKey(key.toStdString().c_str());
-
     for( uint32_t i = 0 ; i < fileBytearray.length(); i++ )
     {
 
@@ -100,7 +96,7 @@ void MainWindow::on_pushButton_encrypt_clicked()
 
             j = 0;
 
-            g->encrypt(encryptedBlock, block);
+            g.encrypt(encryptedBlock, block);
 
             encryptedFile.write((const char*)encryptedBlock, 16);
 
@@ -116,13 +112,11 @@ void MainWindow::on_pushButton_encrypt_clicked()
     if( j != 0 )
     {
 
-        g->encrypt(encryptedBlock, block);
+        g.encrypt(encryptedBlock, block);
 
         encryptedFile.write((const char*)encryptedBlock, 16);
 
     }
-
-    delete g;
 
     encryptedFile.close();
 
@@ -176,12 +170,6 @@ void MainWindow::on_pushButton_decrypt_clicked()
     uint32_t fileSize = 0;
     uint32_t fileCounter = 0;
 
-    gost12_15* g = new gost12_15();
-
-    QString key = ui->lineEdit_key->text();
-
-    g->setKey(key.toStdString().c_str());
-
     for( uint32_t i = 0 ; i < fileBytearray.length(); i++ )
     {
 
@@ -193,18 +181,9 @@ void MainWindow::on_pushButton_decrypt_clicked()
         {
 
             j = 0;
-            qDebug() << "BLOCK-";
-            for( auto elem : block)
-            {
-                qDebug() << hex <<elem << " ";
-            }
-            g->decrypt(decryptedBlock, block);
-            qDebug() << "DECBLOCK-";
-            for( auto elem : decryptedBlock)
-            {
-                qDebug() << hex <<elem << " ";
-            }
-            qDebug();
+
+            g.decrypt(decryptedBlock, block);
+
             if( i < 16 )
             {
 
@@ -253,8 +232,6 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
     }
 
-    delete g;
-
     decryptedFile.close();
 
 }
@@ -263,11 +240,26 @@ void MainWindow::on_pushButton_decrypt_clicked()
 void MainWindow::on_pushButton_setKey_clicked()
 {
 
-   // QString key = ui->lineEdit_key->text();
+   QString key = ui->lineEdit_key->text();
 
-   // g.setKey(key.toStdString().c_str());
+   static bool keySetted = 1;
 
-   // keySetted = true;
+   if(keySetted == 0)
+   {
+       key.clear();
+       ui->lineEdit_key->clear();
+       ui->lineEdit_key->setStyleSheet("QLineEdit { background: rgb(255, 255, 255); selection-background-color: rgb(0, 0, 255); }");
+       ui->pushButton_setKey->setText("Задать");
+       keySetted = 1;
+   }
+   else
+   {
+       ui->lineEdit_key->setStyleSheet("QLineEdit { background: rgb(0, 255, 255); selection-background-color: rgb(233, 99, 0); }");
+       ui->pushButton_setKey->setText("Сбросить");
+       keySetted = 0;
+   }
+
+   g.setKey(key.toStdString().c_str());
 
 }
 
