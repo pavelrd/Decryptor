@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>519</width>
-    <height>466</height>
+    <width>1050</width>
+    <height>543</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -57,6 +57,27 @@
           </widget>
          </item>
          <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_3">
+           <item>
+            <widget class="QSpinBox" name="spinBox_keyLength">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>32</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButton_generationKey">
+             <property name="text">
+              <string>Генерация</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
           <widget class="QPushButton" name="pushButton_setKey">
            <property name="text">
             <string>Задать</string>
@@ -89,7 +110,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>519</width>
+     <width>1050</width>
      <height>21</height>
     </rect>
    </property>

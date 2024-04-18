@@ -13,6 +13,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
+    srand(time(NULL));
     ui->setupUi(this);
 }
 
@@ -145,7 +146,7 @@ void MainWindow::on_pushButton_decrypt_clicked()
     if( fileBytearray.size() % 16 != 0 )
     {
         QMessageBox msgBox;
-        msgBox.setText("Зашифроанный файл поврежден, его размер не кратен 16 байтам!");
+        msgBox.setText("Зашифрованный файл поврежден, его размер не кратен 16 байтам!");
         msgBox.exec();
         return;
     }
@@ -244,6 +245,14 @@ void MainWindow::on_pushButton_setKey_clicked()
 
    static bool keySetted = 1;
 
+   if(ui->lineEdit_key->text().isEmpty())
+   {
+       QMessageBox msgBox;
+       msgBox.setText("Заполните поле ключа!");
+       msgBox.exec();
+       return;
+   }
+
    if(keySetted == 0)
    {
        key.clear();
@@ -254,12 +263,28 @@ void MainWindow::on_pushButton_setKey_clicked()
    }
    else
    {
-       ui->lineEdit_key->setStyleSheet("QLineEdit { background: rgb(0, 255, 255); selection-background-color: rgb(233, 99, 0); }");
+       ui->lineEdit_key->setStyleSheet("QLineEdit { background: rgb(0, 255, 255); selection-background-color: rgb(0, 0, 255); }");
        ui->pushButton_setKey->setText("Сбросить");
        keySetted = 0;
    }
 
    g.setKey(key.toStdString().c_str());
+
+}
+
+const char *symbolsForRandomKey = "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM:<>'\".,|?;\\/[]{}-=!@#$%^&*()_+~";
+
+void MainWindow::on_pushButton_generationKey_clicked()
+{
+
+    QString generation_key;
+
+    for(int i = 0; i < ui->spinBox_keyLength->value(); i++)
+    {
+            generation_key += symbolsForRandomKey[ rand() % strlen(symbolsForRandomKey) ];
+    }
+
+    ui->lineEdit_key->setText(generation_key);
 
 }
 
