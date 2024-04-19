@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "gost12_15.h"
 #include "threadworker.h"
+#include <time.h>
 #include <QFileDialog>
 #include <QMessageBox>
 
@@ -18,6 +19,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     srand(time(NULL));
     ui->setupUi(this);
+
 
     connect(&worker, SIGNAL(progressChanged(int)), ui->progressBar_status, SLOT(setValue(int)));
     connect(&worker, SIGNAL(cryptCompteted(bool)), this, SLOT(encryptShow(bool)));
@@ -65,6 +67,21 @@ void MainWindow::on_pushButton_encrypt_clicked()
         delete sourceFile;
         return;
     }
+
+    QByteArray sourceFileData = sourceFile->read(16000);
+
+    ui->textEdit_source->clear();
+
+    ui->textEdit_source->appendPlainText(QString(sourceFileData));
+
+    ui->textEdit_sourceHEX->clear();
+
+    ui->textEdit_sourceHEX->appendPlainText(QString(sourceFileData.toHex()));
+
+    ui->textEdit_result->clear();
+    ui->textEdit_resultHEX->clear();
+
+    sourceFile->seek(0);
 
     QFile* encryptedFile = new QFile(fileNamePath+".crypt");
 
@@ -134,6 +151,19 @@ void MainWindow::on_pushButton_decrypt_clicked()
         delete sourceFile;
         return;
     }
+
+    QByteArray sourceFileData = sourceFile->read(16000);
+
+    ui->textEdit_source->clear();
+    ui->textEdit_source->appendPlainText( QString(sourceFileData) );
+
+    ui->textEdit_sourceHEX->clear();
+    ui->textEdit_sourceHEX->appendPlainText(QString(sourceFileData.toHex()));
+
+    ui->textEdit_result->clear();
+    ui->textEdit_resultHEX->clear();
+
+    sourceFile->seek(0);
 
     fileNamePath.chop(6);
 
@@ -260,18 +290,38 @@ void MainWindow::encryptShow(bool isEncrypt)
 
     msgBox.setWindowTitle("Decryptor");
 
+    QString filenamePath;
+
     if( isEncrypt )
     {
+        filenamePath = ui->lineEdit_inputFile->text()+".crypt";
         msgBox.setText("Шифрование файла завершено!");
+
     }
     else
     {
-         msgBox.setText("Дешифрование файла завершено!");
+
+        filenamePath = ui->lineEdit_inputFile->text();
+
+        filenamePath.chop(6);
+
+        msgBox.setText("Дешифрование файла завершено!");
+
     }
 
     msgBox.exec();
 
+    QFile file(filenamePath);
 
+    if( !file.open(QIODevice::ReadOnly | QIODevice::Unbuffered) )
+    {
+        return;
+    }
+
+    QByteArray sourceFileData = file.read(16000);
+
+    ui->textEdit_result->setText( QString::fromUtf8(sourceFileData) );
+    ui->textEdit_resultHEX->setText(QString(sourceFileData.toHex()));
 
 }
 
