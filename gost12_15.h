@@ -5,7 +5,7 @@
 #include <vector>
 #include <map>
 #include <utility>
-
+#include <QThread>
 #include <bitset>
 
 using std::cout;
@@ -15,10 +15,12 @@ using std::bitset;
 using std::map;
 using std::pair;
 
-class gost12_15 {
+class gost12_15
+{
 public:
 
     void setKey(const char *key);
+    void clearKey();
     void encrypt(uint8_t* encryptedBlock, uint8_t *block);
     void decrypt(uint8_t* block, uint8_t* encryptedBlock);
     bool isKeySetted();

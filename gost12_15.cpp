@@ -688,6 +688,11 @@ void gost12_15::setKey(const char* key)
 void gost12_15::encrypt(uint8_t* encryptedBlock, uint8_t* block)
 {
 
+    if( !keySetted )
+    {
+        return;
+    }
+
     vector<uint8_t> data(16, 0);
 
     for( int i = 0 ; i < 16; i++ )
@@ -706,10 +711,13 @@ void gost12_15::encrypt(uint8_t* encryptedBlock, uint8_t* block)
 
 }
 
-
-
 void gost12_15::decrypt(uint8_t* block, uint8_t* encryptedBlock)
 {
+
+    if( !keySetted )
+    {
+        return;
+    }
 
     vector<uint8_t> data(16, 0);
 
@@ -732,4 +740,9 @@ void gost12_15::decrypt(uint8_t* block, uint8_t* encryptedBlock)
 bool gost12_15::isKeySetted()
 {
     return keySetted;
+}
+
+void gost12_15::clearKey()
+{
+    keySetted = false;
 }

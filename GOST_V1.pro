@@ -21,11 +21,13 @@ CONFIG += c++17
 SOURCES += \
     gost12_15.cpp \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    threadworker.cpp
 
 HEADERS += \
     gost12_15.h \
-    mainwindow.h
+    mainwindow.h \
+    threadworker.h
 
 FORMS += \
     mainwindow.ui

@@ -15,6 +15,10 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+public slots:
+
+    void encryptShow(bool isEncrypt);
+
 private slots:
     void on_pushButton_chooseFile_clicked();
 
