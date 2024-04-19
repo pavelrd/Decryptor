@@ -5,6 +5,9 @@
 
 void threadWorker::run()
 {
+
+    int progressValue = 0;
+
 if(isEncrypt)
 {
     uint8_t block[16] = {0};
@@ -44,6 +47,13 @@ if(isEncrypt)
         if( j >= 16 )
         {
 
+            sync.lock();
+            if(pauseFlag)
+            {
+                pauseCond.wait(&sync); // in this place, your thread will stop to execute until someone calls resume
+            }
+            sync.unlock();
+
             j = 0;
 
             gost12_15_Worker->encrypt(encryptedBlock, block);
@@ -55,7 +65,13 @@ if(isEncrypt)
                 block[indexClear] = 0x00;
             }
 
-            emit progressChanged( ((double)i) / fileBytearray.length() * 100 );
+            int currentProgressValue = ( (int) ( ((double)i) / fileBytearray.length() * 100 ) );
+
+            if( progressValue < currentProgressValue )
+            {
+                progressValue = currentProgressValue;
+                emit progressChanged(progressValue);
+            }
 
         }
 
@@ -96,6 +112,13 @@ else
 
         if( j >= 16 )
         {
+
+            sync.lock();
+            if(pauseFlag)
+            {
+                pauseCond.wait(&sync); // in this place, your thread will stop to execute until someone calls resume
+            }
+            sync.unlock();
 
             j = 0;
 
@@ -145,7 +168,13 @@ else
                 block[indexClear] = 0x00;
             }
 
-            emit progressChanged( ((double)i) / fileBytearray.length() * 100 );
+            int currentProgressValue = ( (int) ( ((double)i) / fileBytearray.length() * 100 ) );
+
+            if( progressValue < currentProgressValue )
+            {
+                progressValue = currentProgressValue;
+                emit progressChanged(progressValue);
+            }
 
         }
 
@@ -171,4 +200,19 @@ void threadWorker::setEncrypt( QFile* _encryptedFile, QFile* _sourceFile, gost12
     sourceFile    = _sourceFile;
     gost12_15_Worker = _gost12_15_Worker;
     isEncrypt = _isEncrypt;
+}
+
+void threadWorker::resume()
+{
+    sync.lock();
+    pauseFlag = false;
+    sync.unlock();
+    pauseCond.wakeAll();
+}
+
+void threadWorker::pause()
+{
+    sync.lock();
+    pauseFlag = true;
+    sync.unlock();
 }

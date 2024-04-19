@@ -30,6 +30,10 @@ private slots:
 
     void on_pushButton_generationKey_clicked();
 
+    void on_pushButton_pause_clicked();
+
+    void on_pushButton_cancel_clicked();
+
 private:
     Ui::MainWindow *ui;
 };

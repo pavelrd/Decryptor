@@ -81,9 +81,20 @@ void MainWindow::on_pushButton_encrypt_clicked()
         return;
     }
 
+    ui->pushButton_chooseFile->setEnabled(false);
+    ui->pushButton_decrypt->setEnabled(false);
+    ui->pushButton_encrypt->setEnabled(false);
+    ui->pushButton_generationKey->setEnabled(false);
+    ui->pushButton_setKey->setEnabled(false);
+    ui->lineEdit_key->setEnabled(false);
+    ui->progressBar_status->setEnabled(true);
+
     worker.setEncrypt( encryptedFile, sourceFile, &g, true );
 
     worker.start();
+
+    ui->pushButton_pause->setEnabled(true);
+    ui->pushButton_cancel->setEnabled(true);
 
 }
 
@@ -164,9 +175,22 @@ void MainWindow::on_pushButton_decrypt_clicked()
     statusBar()->addWidget(statusLabel,1);
     */
 
+    ui->pushButton_chooseFile->setEnabled(false);
+    ui->pushButton_decrypt->setEnabled(false);
+    ui->pushButton_encrypt->setEnabled(false);
+    ui->pushButton_generationKey->setEnabled(false);
+    ui->pushButton_setKey->setEnabled(false);
+    ui->lineEdit_key->setEnabled(false);
+    ui->progressBar_status->setEnabled(true);
+
     worker.setEncrypt( decryptedFile, sourceFile, &g, false );
 
     worker.start();
+
+    ui->pushButton_pause->setEnabled(true);
+    ui->pushButton_cancel->setEnabled(true);
+
+    // worker.quit();
 
 }
 
@@ -221,6 +245,17 @@ void MainWindow::on_pushButton_generationKey_clicked()
 void MainWindow::encryptShow(bool isEncrypt)
 {
 
+    ui->pushButton_chooseFile->setEnabled(true);
+    ui->pushButton_decrypt->setEnabled(true);
+    ui->pushButton_encrypt->setEnabled(true);
+    ui->pushButton_generationKey->setEnabled(true);
+    ui->pushButton_setKey->setEnabled(true);
+    ui->lineEdit_key->setEnabled(true);
+    ui->progressBar_status->setEnabled(false);
+
+    ui->pushButton_pause->setEnabled(false);
+    ui->pushButton_cancel->setEnabled(false);
+
     QMessageBox msgBox;
 
     msgBox.setWindowTitle("Decryptor");
@@ -235,5 +270,48 @@ void MainWindow::encryptShow(bool isEncrypt)
     }
 
     msgBox.exec();
+
+
+
+}
+
+
+void MainWindow::on_pushButton_pause_clicked()
+{
+
+    if( ui->pushButton_pause->text() == "Пауза" )
+    {
+        worker.pause();
+        ui->pushButton_pause->setText("Продолжить");
+    }
+    else
+    {
+        worker.resume();
+        ui->pushButton_pause->setText("Пауза");
+    }
+
+}
+
+void MainWindow::on_pushButton_cancel_clicked()
+{
+
+    // worker.quit();
+    // worker.blockSignals(true);
+    worker.terminate();
+    worker.wait();
+
+    ui->pushButton_chooseFile->setEnabled(true);
+    ui->pushButton_decrypt->setEnabled(true);
+    ui->pushButton_encrypt->setEnabled(true);
+    ui->pushButton_generationKey->setEnabled(true);
+    ui->pushButton_setKey->setEnabled(true);
+    ui->lineEdit_key->setEnabled(true);
+
+    ui->pushButton_pause->setEnabled(false);
+    ui->pushButton_cancel->setEnabled(false);
+
+    ui->progressBar_status->setValue(0);
+    ui->progressBar_status->setEnabled(false);
+
 }
 
