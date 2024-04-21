@@ -13,7 +13,8 @@
 * \param [in] polynom2 – второй многочлен для умножения.
 * \return возвращает результат умножения двух многочленов.
 */
-uint8_t gost12_15::galoisMult(uint8_t polynom1, uint8_t polynom2) {
+uint8_t gost12_15::galoisMult(uint8_t polynom1, uint8_t polynom2)
+{
     uint8_t multRes = 0;
     uint8_t highBit;
 
@@ -26,7 +27,7 @@ uint8_t gost12_15::galoisMult(uint8_t polynom1, uint8_t polynom2) {
         polynom1 = static_cast<uint8_t>(polynom1 << 1);
 
         if (highBit) {
-            polynom1 = polynom1 ^ this->generatingPolynom; // Порождающий полином вычитается из polynom1
+            polynom1 = polynom1 ^ generatingPolynom; // Порождающий полином вычитается из polynom1
         }
 
         polynom2 = static_cast<uint8_t>(polynom2 >> 1);
@@ -47,14 +48,18 @@ uint8_t gost12_15::galoisMult(uint8_t polynom1, uint8_t polynom2) {
 * \param [in] data – открытая входная последовательность байт размера 16.
 * \return возвращает полином 7-й степени, который представлен в числовом виде.
 */
-uint8_t gost12_15::lFunc(vector<uint8_t> data) {
+uint8_t gost12_15::lFunc(uint8_t* data)
+{
+
     uint8_t la = 0;
 
-    for (int i = 0; i < blockSize; i++) {
+    for (int i = 0; i < blockSize; i++)
+    {
         la = la ^ galoisMult(data[i], lCoefficients[i]);
     }
 
     return la;
+
 }
 
 
@@ -68,7 +73,8 @@ uint8_t gost12_15::lFunc(vector<uint8_t> data) {
 * \param [in] data – зашифрованная входная последовательность байт размера 16.
 * \return возвращает полином 7-й степени, который представлен в числовом виде.
 */
-uint8_t gost12_15::inverselFunc(vector<uint8_t> data) {
+uint8_t gost12_15::inverselFunc(uint8_t* data)
+{
     uint8_t la = 0;
 
     for (int i = blockSize - 2; i >= 0; i--) {
@@ -93,19 +99,22 @@ uint8_t gost12_15::inverselFunc(vector<uint8_t> data) {
 * \param [in] data – открытая входная последовательность байт размера 16.
 * \return возвращает линейно преобразованную входную последовательность .
 */
-vector<uint8_t> gost12_15::LTransformation(vector<uint8_t> data) {
-    uint8_t la = 0;
-    vector<uint8_t> rData = data;
 
-    for (int i = 0; i < blockSize; i++) {
-        la = lFunc(rData);
-        for (int j = 0; j < blockSize - 1; j++) {
-            rData[j] = rData[j + 1];
+void gost12_15::LTransformation(uint8_t* outData, uint8_t* data)
+{
+
+    memcpy(outData, data, blockSize);
+
+    for (int i = 0; i < blockSize; i++)
+    {
+        uint8_t la = lFunc(outData);
+        for (int j = 0; j < blockSize - 1; j++)
+        {
+            outData[j] = outData[j + 1];
         }
-        rData[blockSize - 1] = la;
+        outData[blockSize - 1] = la;
     }
 
-    return rData;
 }
 
 
@@ -120,19 +129,25 @@ vector<uint8_t> gost12_15::LTransformation(vector<uint8_t> data) {
 * \param [in] data – зашифрованная входная последовательность байт размера 16.
 * \return возвращает расшифрованную входную последовательность.
 */
-vector<uint8_t> gost12_15::inverseLTransformation(vector<uint8_t> data) {
-    uint8_t la = 0;
-    vector<uint8_t> rData = data;
+void gost12_15::inverseLTransformation(uint8_t* data)
+{
 
-    for (int i = 0; i < blockSize; i++) {
-        la = inverselFunc(rData);
-        for (int j = blockSize - 1; j > 0; j--) {
+    uint8_t rData[blockSize];
+
+    memcpy(rData, data, blockSize);
+
+    for (int i = 0; i < blockSize; i++)
+    {
+        uint8_t la = inverselFunc(rData);
+        for (int j = blockSize - 1; j > 0; j--)
+        {
             rData[j] = rData[j - 1];
         }
         rData[0] = la;
     }
 
-    return rData;
+    memcpy(data, rData, blockSize);
+
 }
 
 
@@ -148,14 +163,15 @@ vector<uint8_t> gost12_15::inverseLTransformation(vector<uint8_t> data) {
 * \param [in] data – открытая входная последовательность байт размера 16.
 * \return возвращает нелинейно преобразованную входную последовательность.
 */
-vector<uint8_t> gost12_15::STransformation(vector<uint8_t> data) {
-    vector<uint8_t> sData(blockSize, 0);
 
-    for (int i = 0; i < blockSize; i++) {
-        sData[i] = STable[data[i]];
+void gost12_15::STransformation(uint8_t* outData, uint8_t* data)
+{
+
+    for (int i = 0; i < blockSize; i++)
+    {
+        outData[i] = STable[data[i]];
     }
 
-    return sData;
 }
 
 
@@ -170,14 +186,14 @@ vector<uint8_t> gost12_15::STransformation(vector<uint8_t> data) {
 * \param [in] data – зашифрованная входная последовательность байт размера 16.
 * \return возвращает расшифрованную входную последовательно.
 */
-vector<uint8_t> gost12_15::inverseSTransformation(vector<uint8_t> data) {
-    vector<uint8_t> sData(blockSize, 0);
+void gost12_15::inverseSTransformation(uint8_t* data)
+{
 
-    for (int i = 0; i < blockSize; i++) {
-        sData[i] = inverseSTable[data[i]];
+    for (int i = 0; i < blockSize; i++)
+    {
+        data[i] = inverseSTable[data[i]];
     }
 
-    return sData;
 }
 
 
@@ -192,14 +208,14 @@ vector<uint8_t> gost12_15::inverseSTransformation(vector<uint8_t> data) {
 * \param [in] key - раундовый ключ размера 16 байт.
 * \return возвращает результат наложения раундового ключа на входную последовательность.
 */
-vector<uint8_t> gost12_15::XTransformation(vector<uint8_t> data, vector<uint8_t> key) {
-    vector<uint8_t> dataX(blockSize, 0);
+void gost12_15::XTransformation(uint8_t* out_data, uint8_t* data, uint8_t* key)
+{
 
-    for (int i = 0; i < blockSize; i++) {
-        dataX[i] = data[i] ^ key[i];
+    for (int i = 0; i < blockSize; i++)
+    {
+        out_data[i] = data[i] ^ key[i];
     }
 
-    return dataX;
 }
 
 
@@ -214,21 +230,46 @@ vector<uint8_t> gost12_15::XTransformation(vector<uint8_t> data, vector<uint8_t>
 * идентичные для каждого этапа развертки ключей.
 *
 */
-void gost12_15::initRoundConsts() {
-    for (size_t i = 0; i < roundConsts.size(); i++) {
-        for (size_t j = 0; j < roundConsts[i].size(); j++) {
+
+#include <QDebug>
+
+void gost12_15::initRoundConsts()
+{
+
+    for (size_t i = 0; i < 32; i++)
+    {
+        for (size_t j = 0; j < 16; j++)
+        {
             roundConsts[i][j] = 0;
         }
     }
 
-    this->roundConsts.resize(32);
-    for (size_t i = 0; i < roundConsts.size(); i++) {
-        this->roundConsts[i].resize(blockSize);
-        this->roundConsts[i][blockSize - 1] = static_cast<uint8_t>(i + 1);
-        this->roundConsts[i] = inverseData(this->roundConsts[i]);
-        this->roundConsts[i] = LTransformation(this->roundConsts[i]);
-        this->roundConsts[i] = inverseData(this->roundConsts[i]);
+    for (size_t i = 0; i < 32; i++)
+    {
+
+        roundConsts[i][blockSize - 1] = static_cast<uint8_t>(i + 1);
+
+        inverseData(roundConsts[i], roundConsts[i] );
+
+        LTransformation(roundConsts[i], roundConsts[i]);
+
+        inverseData(roundConsts[i], roundConsts[i]);
+
     }
+
+/*
+    for( uint8_t i = 0 ; i < 32; i++ )
+    {
+        QString str = "";
+        for(uint8_t j = 0 ; j < 16; j++)
+        {
+            str += QString::number(roundConsts[i][j],16) + " ";
+        }
+
+        qDebug() << str;
+    }
+*/
+
 }
 
 
@@ -248,96 +289,76 @@ void gost12_15::initRoundConsts() {
 * \param [in] key – главный ключ длиной 32 байта.
 * \return возвращает матрицу раундовых ключей размера 10 (количество ключей) на 16 (размер блока).
 */
-vector<vector<uint8_t>> gost12_15::generatingRoundKeys(vector<uint8_t> key) {
-    vector<vector<uint8_t>> roundKeys;
-    roundKeys.resize(10);
-    for (size_t i = 0; i < roundKeys.size(); i++) {
-        roundKeys[i].resize(blockSize);
-    }
 
-    for (int i = 0; i < blockSize; i++) {
+#include <QDebug>
+
+void gost12_15::generatingRoundKeys(vector<uint8_t> key)
+{
+
+    for (int i = 0; i < blockSize; i++)
+    {
         roundKeys[0][i] = key[i];
     }
 
-    for (int i = 0; i < blockSize; i++) {
+    for (int i = 0; i < blockSize; i++)
+    {
         roundKeys[1][i] = key[i + blockSize];
     }
 
-    vector<uint8_t> k1 = roundKeys[0];
-    vector<uint8_t> k2 = roundKeys[1];
-    vector<uint8_t> lsx(blockSize, 0);
+    uint8_t k1[blockSize];
+
+    for( int i = 0 ; i < blockSize; i++ )
+    {
+        k1[i] = roundKeys[0][i];
+    }
+
+    uint8_t k2[blockSize];
+
+    for( int i = 0 ; i < blockSize; i++ )
+    {
+        k2[i] = roundKeys[1][i];
+    }
+
+    uint8_t lsx[blockSize] = {0};
 
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 8; j++) {
             if (j % 2 == 0) {
-                lsx = XTransformation(k1, roundConsts[8 * i + j]);
-                lsx = inverseData(lsx);
-                lsx = STransformation(lsx);
-                lsx = LTransformation(lsx);
-                lsx = inverseData(lsx);
-                k2 = dataXor(lsx, k2);
+                XTransformation( lsx, k1, roundConsts[8 * i + j]);
+                inverseData(lsx,lsx);
+                STransformation(lsx, lsx);
+                LTransformation(lsx,lsx);
+                inverseData(lsx, lsx);
+                dataXor( k2 ,lsx, k2);
             }
             else if (j % 2 == 1) {
-                lsx = XTransformation(k2, roundConsts[8 * i + j]);
-                lsx = inverseData(lsx);
-                lsx = STransformation(lsx);
-                lsx = LTransformation(lsx);
-                lsx = inverseData(lsx);
-                k1 = dataXor(lsx, k1);
+                XTransformation( lsx, k2, roundConsts[8 * i + j]);
+                inverseData( lsx, lsx);
+                STransformation(lsx, lsx);
+                LTransformation(lsx, lsx);
+                inverseData(lsx, lsx);
+                dataXor(k1, lsx, k1);
             }
         }
-        roundKeys[i * 2 + 2] = k1;
-        roundKeys[i * 2 + 3] = k2;
+
+        QString str = "";
+
+        for(int index = 0 ; index < 16; index++)
+        {
+            str += QString::number(k1[index], 16) + " ";
+        }
+
+        for(int index = 0 ; index < 16; index++)
+        {
+            str += QString::number(k2[index], 16) + " ";
+        }
+
+        qDebug() << str;
+
+        memcpy( roundKeys[i * 2 + 2], k1, 16 );
+        memcpy( roundKeys[i * 2 + 3], k2, 16 );
     }
 
-    return roundKeys;
-}
-
-
-/**
-* \brief Функция LSX преобразования.
-*
-* Открытая входная последовательность проходит 9 раундов LSX преобразования.
-* На последнем 10м раунде происходит побитовое наложение раундового ключа.
-*
-* \param [in] data – открытая входная последовательность размера 16 байт.
-* \param [in] roundKeys - матрица раундовых ключей.
-* \return возвращает результат преобразования LSX для исходной последовательности.
-*/
-vector<uint8_t> gost12_15::LSXEncryptData(vector<uint8_t> data, vector<vector<uint8_t>> roundKeys) {
-    vector<uint8_t> encData = data;
-
-    for (int i = 0; i < 9; i++) {
-        encData = LSXTransformation(encData, roundKeys[i]);
-    }
-
-    encData = XTransformation(encData, roundKeys[9]);
-
-    return encData;
-}
-
-
-/**
-* \brief Функция обратного LSX преобразования.
-*
-* Открытая входная последовательность проходит 9 раундов обратного LSX преобразования.
-* На последнем 10м раунде происходит побитовое наложение раундового ключа.
-* Ключи следуют в обратном порядке, от последнего к первому.
-*
-* \param [in] data – зашифрованная входная последовательно размера 16 байт.
-* \param [in] roundKeys - матрица раундовых ключей.
-* \return возвращает результат обратного LSX преобразования для исходной последовательности.
-*/
-vector<uint8_t> gost12_15::LSXDecryptData(vector<uint8_t> data, vector<vector<uint8_t>> roundKeys) {
-    vector<uint8_t> decData = data;
-
-    for (int i = 9; i > 0; i--) {
-        decData = inverseLSXTransformation(decData, roundKeys[i]);
-    }
-
-    decData = XTransformation(decData, roundKeys[0]);
-
-    return decData;
 }
 
 
@@ -357,17 +378,16 @@ vector<uint8_t> gost12_15::LSXDecryptData(vector<uint8_t> data, vector<vector<ui
 * \param [in] roundKey - раундовый ключ размера 16 байт.
 * \return возвращает результат одного раунда LSX преобразования.
 */
-vector<uint8_t> gost12_15::LSXTransformation(vector<uint8_t> data, vector<uint8_t> roundKey) {
-    vector<uint8_t> lsxData = data;
+void gost12_15::LSXTransformation(uint8_t* data, uint8_t* roundKey)
+{
 
-    lsxData = XTransformation(lsxData, roundKey);
-    lsxData = inverseData(lsxData);
+    XTransformation( data, data, roundKey);
+    inverseData(data, data);
 
-    lsxData = STransformation(lsxData);
-    lsxData = LTransformation(lsxData);
-    lsxData = inverseData(lsxData);
+    STransformation(data, data);
+    LTransformation(data, data);
+    inverseData(data, data);
 
-    return lsxData;
 }
 
 
@@ -387,17 +407,16 @@ vector<uint8_t> gost12_15::LSXTransformation(vector<uint8_t> data, vector<uint8_
 * \param [in] roundKey - раундовый ключ размера 16 байт.
 * \return возвращает результат одного раунда обратного LSX преобразования.
 */
-vector<uint8_t> gost12_15::inverseLSXTransformation(vector<uint8_t> data, vector<uint8_t> roundKey) {
-    vector<uint8_t> lsxDataInv = data;
+void gost12_15::inverseLSXTransformation(uint8_t* data, uint8_t* roundKey)
+{
 
-    lsxDataInv = XTransformation(lsxDataInv, roundKey);
-    lsxDataInv = inverseData(lsxDataInv);
+    XTransformation(data, data, roundKey);
+    inverseData(data, data);
 
-    lsxDataInv = inverseLTransformation(lsxDataInv);
-    lsxDataInv = inverseSTransformation(lsxDataInv);
-    lsxDataInv = inverseData(lsxDataInv);
+    inverseLTransformation(data);
+    inverseSTransformation(data);
+    inverseData(data, data);
 
-    return lsxDataInv;
 }
 
 
@@ -408,14 +427,14 @@ vector<uint8_t> gost12_15::inverseLSXTransformation(vector<uint8_t> data, vector
 * \param [in] data2 – второй вектор.
 * \return возвращает результат побитового сложения по модулю 2 двух векторов.
 */
-vector<uint8_t> gost12_15::dataXor(vector<uint8_t> data1, vector<uint8_t> data2) {
-    vector<uint8_t> dataXor(blockSize, 0);
+void gost12_15::dataXor(uint8_t* out_data, uint8_t* data1, uint8_t* data2)
+{
 
-    for (int i = 0; i < blockSize; i++) {
-        dataXor[i] = data1[i] ^ data2[i];
+    for (int i = 0; i < blockSize; i++)
+    {
+        out_data[i] = data1[i] ^ data2[i];
     }
 
-    return dataXor;
 }
 
 
@@ -463,14 +482,21 @@ vector<uint8_t> gost12_15::getBinaryVector(uint8_t number) {
 * \param [in] data – исходная последовательность.
 * \return возвращает развернутую исходную последовательность.
 */
-vector<uint8_t> gost12_15::inverseData(vector<uint8_t> data) {
-    vector<uint8_t> invData(blockSize, 0);
+void gost12_15::inverseData(uint8_t* outData, uint8_t* data)
+{
 
-    for (int i = 0; i < blockSize; i++) {
+    uint8_t invData[16] = {0};
+
+    for (int i = 0; i < blockSize; i++)
+    {
         invData[i] = data[blockSize - i - 1];
     }
 
-    return invData;
+    for( int i = 0 ; i < blockSize; i++ )
+    {
+        outData[i] = invData[i];
+    }
+
 }
 
 /**
@@ -558,7 +584,7 @@ std::vector<uint8_t> gost12_15::longAddition(std::vector<uint8_t> a, std::vector
 * \return возвращает работы режима гаммирования - зашифрованную (расшифрованную) исходную последовательность.
 */
 vector<uint8_t> gost12_15::gammaCryption(vector<uint8_t> data, vector<uint8_t> sync, vector<vector<uint8_t>> roundKeys) {
-    vector<uint8_t> gammaSync(blockSize, 0);
+/*    vector<uint8_t> gammaSync(blockSize, 0);
     for (int i = 0; i < blockSize / 2; i++) {
         gammaSync[i] = sync[i];
     }
@@ -583,6 +609,9 @@ vector<uint8_t> gost12_15::gammaCryption(vector<uint8_t> data, vector<uint8_t> s
     }
 
     return encData;
+*/
+    vector<uint8_t> encData;
+    return encData;
 }
 
 
@@ -599,6 +628,7 @@ vector<uint8_t> gost12_15::gammaCryption(vector<uint8_t> data, vector<uint8_t> s
 * \return возвращает вычисленную имитовставку.
 */
 vector<uint8_t> gost12_15::imitoGeneration(vector<uint8_t> data, vector<vector<uint8_t>> roundKeys) {
+    /*
     vector<uint8_t> imito(imitoLen, 0);
     vector<uint8_t> blockData(blockSize, 0);
     int blockCount = static_cast<int>(data.size() / blockSize);
@@ -628,7 +658,8 @@ vector<uint8_t> gost12_15::imitoGeneration(vector<uint8_t> data, vector<vector<u
     for (int i = 0; i < imitoLen; i++) {
         imito[i] = blockData[i];
     }
-
+    */
+    vector<uint8_t> imito(imitoLen, 0);
     return imito;
 }
 
@@ -646,6 +677,7 @@ vector<uint8_t> gost12_15::imitoGeneration(vector<uint8_t> data, vector<vector<u
 * \return возвращает вычисленный ключ для имитовставки.
 */
 vector<uint8_t> gost12_15::getImitoKey(vector<vector<uint8_t>> roundKeys) {
+    /*
     vector<uint8_t> imitoKey(blockSize, 0);
     uint8_t overflowFlag;
     uint8_t overflow = 0;
@@ -663,6 +695,8 @@ vector<uint8_t> gost12_15::getImitoKey(vector<vector<uint8_t>> roundKeys) {
             imitoKey[i] = imitoKey[i] ^ B128[i];
         }
     }
+    */
+    vector<uint8_t> imitoKey(blockSize, 0);
 
     return imitoKey;
 }
@@ -679,7 +713,7 @@ void gost12_15::setKey(const char* key)
 
     initRoundConsts();
 
-    roundKeys = generatingRoundKeys(generalKey);
+    generatingRoundKeys(generalKey);
 
     keySetted = true;
 
@@ -693,21 +727,12 @@ void gost12_15::encrypt(uint8_t* encryptedBlock, uint8_t* block)
         return;
     }
 
-    vector<uint8_t> data(16, 0);
-
-    for( int i = 0 ; i < 16; i++ )
+    for (int i = 0; i < 9; i++)
     {
-        data[i] = block[i];
+        LSXTransformation( block, roundKeys[i] );
     }
 
-    vector<uint8_t> encData(16, 0);
-
-    encData = LSXEncryptData(data, roundKeys);
-
-    for( int i = 0 ; i < 16; i++ )
-    {
-        encryptedBlock[i] = encData[i];
-    }
+    XTransformation( encryptedBlock, block, roundKeys[9] );
 
 }
 
@@ -719,21 +744,12 @@ void gost12_15::decrypt(uint8_t* block, uint8_t* encryptedBlock)
         return;
     }
 
-    vector<uint8_t> data(16, 0);
-
-    for( int i = 0 ; i < 16; i++ )
+    for (int i = 9; i > 0; i--)
     {
-        data[i] = encryptedBlock[i];
+        inverseLSXTransformation(encryptedBlock, roundKeys[i]);
     }
 
-    vector<uint8_t> decryptedData(16, 0);
-
-    decryptedData = LSXDecryptData(data, roundKeys);
-
-    for( int i = 0 ; i < 16; i++ )
-    {
-        block[i] = decryptedData[i];
-    }
+    XTransformation(block, encryptedBlock, roundKeys[0]);
 
 }
 
@@ -746,3 +762,92 @@ void gost12_15::clearKey()
 {
     keySetted = false;
 }
+
+const uint8_t gost12_15::generatingPolynom = 0xc3; //Полином x ^ 8 + x ^ 7 + x ^ 6 + x + 1
+
+const uint8_t gost12_15::lCoefficients[16] =
+{
+    1, 148, 32, 133, 16, 194, 192, 1,
+    251, 1, 192, 194, 16, 133, 32, 148
+};
+
+const uint8_t gost12_15::B128[16] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x87
+};
+
+//Таблица замен
+const uint8_t gost12_15::STable[256] = {
+    0xfc, 0xee, 0xdd, 0x11, 0xcf, 0x6e, 0x31, 0x16,
+    0xfb, 0xc4, 0xfa, 0xda, 0x23, 0xc5, 0x4, 0x4d,
+    0xe9, 0x77, 0xf0, 0xdb, 0x93, 0x2e, 0x99, 0xba,
+    0x17, 0x36, 0xf1, 0xbb, 0x14, 0xcd, 0x5f, 0xc1,
+    0xf9, 0x18, 0x65, 0x5a, 0xe2, 0x5c, 0xef, 0x21,
+    0x81, 0x1c, 0x3c, 0x42, 0x8b, 0x01, 0x8e, 0x4f,
+    0x05, 0x84, 0x02, 0xae, 0xe3, 0x6a, 0x8f, 0xa0,
+    0x06, 0x0b, 0xed, 0x98, 0x7f, 0xd4, 0xd3, 0x1f,
+    0xeb, 0x34, 0x2c, 0x51, 0xea, 0xc8, 0x48, 0xab,
+    0xf2, 0x2a, 0x68, 0xa2, 0xfd, 0x3a, 0xce, 0xcc,
+    0xb5, 0x70, 0x0e, 0x56, 0x08, 0x0c, 0x76, 0x12,
+    0xbf, 0x72, 0x13, 0x47, 0x9c, 0xb7, 0x5d, 0x87,
+    0x15, 0xa1, 0x96, 0x29, 0x10, 0x7b, 0x9a, 0xc7,
+    0xf3, 0x91, 0x78, 0x6f, 0x9d, 0x9e, 0xb2, 0xb1,
+    0x32, 0x75, 0x19, 0x3d, 0xff, 0x35, 0x8a, 0x7e,
+    0x6d, 0x54, 0xc6, 0x80, 0xc3, 0xbd, 0x0d, 0x57,
+    0xdf, 0xf5, 0x24, 0xa9, 0x3e, 0xa8, 0x43, 0xc9,
+    0xd7, 0x79, 0xd6, 0xf6, 0x7c, 0x22, 0xb9, 0x03,
+    0xe0, 0x0f, 0xec, 0xde, 0x7a, 0x94, 0xb0, 0xbc,
+    0xdc, 0xe8, 0x28, 0x50, 0x4e, 0x33, 0x0a, 0x4a,
+    0xa7, 0x97, 0x60, 0x73, 0x1e, 0x00, 0x62, 0x44,
+    0x1a, 0xb8, 0x38, 0x82, 0x64, 0x9f, 0x26, 0x41,
+    0xad, 0x45, 0x46, 0x92, 0x27, 0x5e, 0x55, 0x2f,
+    0x8c, 0xa3, 0xa5, 0x7d, 0x69, 0xd5, 0x95, 0x3b,
+    0x07, 0x58, 0xb3, 0x40, 0x86, 0xac, 0x1d, 0xf7,
+    0x30, 0x37, 0x6b, 0xe4, 0x88, 0xd9, 0xe7, 0x89,
+    0xe1, 0x1b, 0x83, 0x49, 0x4c, 0x3f, 0xf8, 0xfe,
+    0x8d, 0x53, 0xaa, 0x90, 0xca, 0xd8, 0x85, 0x61,
+    0x20, 0x71, 0x67, 0xa4, 0x2d, 0x2b, 0x09, 0x5b,
+    0xcb, 0x9b, 0x25, 0xd0, 0xbe, 0xe5, 0x6c, 0x52,
+    0x59, 0xa6, 0x74, 0xd2, 0xe6, 0xf4, 0xb4, 0xc0,
+    0xd1, 0x66, 0xaf, 0xc2, 0x39, 0x4b, 0x63, 0xb6
+};
+
+//Обратная таблица замен
+const uint8_t gost12_15::inverseSTable[256] =
+{
+    0xa5, 0x2d, 0x32, 0x8f, 0x0e, 0x30, 0x38, 0xc0,
+    0x54, 0xe6, 0x9e, 0x39, 0x55, 0x7e, 0x52, 0x91,
+    0x64, 0x03, 0x57, 0x5a, 0x1c, 0x60, 0x07, 0x18,
+    0x21, 0x72, 0xa8, 0xd1, 0x29, 0xc6, 0xa4, 0x3f,
+    0xe0, 0x27, 0x8d, 0x0c, 0x82, 0xea, 0xae, 0xb4,
+    0x9a, 0x63, 0x49, 0xe5, 0x42, 0xe4, 0x15, 0xb7,
+    0xc8, 0x06, 0x70, 0x9d, 0x41, 0x75, 0x19, 0xc9,
+    0xaa, 0xfc, 0x4d, 0xbf, 0x2a, 0x73, 0x84, 0xd5,
+    0xc3, 0xaf, 0x2b, 0x86, 0xa7, 0xb1, 0xb2, 0x5b,
+    0x46, 0xd3, 0x9f, 0xfd, 0xd4, 0x0f, 0x9c, 0x2f,
+    0x9b, 0x43, 0xef, 0xd9, 0x79, 0xb6, 0x53, 0x7f,
+    0xc1, 0xf0, 0x23, 0xe7, 0x25, 0x5e, 0xb5, 0x1e,
+    0xa2, 0xdf, 0xa6, 0xfe, 0xac, 0x22, 0xf9, 0xe2,
+    0x4a, 0xbc, 0x35, 0xca, 0xee, 0x78, 0x05, 0x6b,
+    0x51, 0xe1, 0x59, 0xa3, 0xf2, 0x71, 0x56, 0x11,
+    0x6a, 0x89, 0x94, 0x65, 0x8c, 0xbb, 0x77, 0x3c,
+    0x7b, 0x28, 0xab, 0xd2, 0x31, 0xde, 0xc4, 0x5f,
+    0xcc, 0xcf, 0x76, 0x2c, 0xb8, 0xd8, 0x2e, 0x36,
+    0xdb, 0x69, 0xb3, 0x14, 0x95, 0xbe, 0x62, 0xa1,
+    0x3b, 0x16, 0x66, 0xe9, 0x5c, 0x6c, 0x6d, 0xad,
+    0x37, 0x61, 0x4b, 0xb9, 0xe3, 0xba, 0xf1, 0xa0,
+    0x85, 0x83, 0xda, 0x47, 0xc5, 0xb0, 0x33, 0xfa,
+    0x96, 0x6f, 0x6e, 0xc2, 0xf6, 0x50, 0xff, 0x5d,
+    0xa9, 0x8e, 0x17, 0x1b, 0x97, 0x7d, 0xec, 0x58,
+    0xf7, 0x1f, 0xfb, 0x7c, 0x09, 0x0d, 0x7a, 0x67,
+    0x45, 0x87, 0xdc, 0xe8, 0x4f, 0x1d, 0x4e, 0x04,
+    0xeb, 0xf8, 0xf3, 0x3e, 0x3d, 0xbd, 0x8a, 0x88,
+    0xdd, 0xcd, 0x0b, 0x13, 0x98, 0x02, 0x93, 0x80,
+    0x90, 0xd0, 0x24, 0x34, 0xcb, 0xed, 0xf4, 0xce,
+    0x99, 0x10, 0x44, 0x40, 0x92, 0x3a, 0x01, 0x26,
+    0x12, 0x1a, 0x48, 0x68, 0xf5, 0x81, 0x8b, 0xc7,
+    0xd6, 0x20, 0x0a, 0x08, 0x00, 0x4c, 0xd7, 0x74
+};
+
+const int gost12_15::blockSize = 16;
+const int gost12_15::imitoLen = 8;
