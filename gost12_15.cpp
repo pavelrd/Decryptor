@@ -231,8 +231,6 @@ void gost12_15::XTransformation(uint8_t* out_data, uint8_t* data, uint8_t* key)
 *
 */
 
-#include <QDebug>
-
 void gost12_15::initRoundConsts()
 {
 
@@ -290,8 +288,6 @@ void gost12_15::initRoundConsts()
 * \return возвращает матрицу раундовых ключей размера 10 (количество ключей) на 16 (размер блока).
 */
 
-#include <QDebug>
-
 void gost12_15::generatingRoundKeys(vector<uint8_t> key)
 {
 
@@ -340,7 +336,7 @@ void gost12_15::generatingRoundKeys(vector<uint8_t> key)
                 dataXor(k1, lsx, k1);
             }
         }
-
+    /*
         QString str = "";
 
         for(int index = 0 ; index < 16; index++)
@@ -354,7 +350,7 @@ void gost12_15::generatingRoundKeys(vector<uint8_t> key)
         }
 
         qDebug() << str;
-
+    */
         memcpy( roundKeys[i * 2 + 2], k1, 16 );
         memcpy( roundKeys[i * 2 + 3], k2, 16 );
     }

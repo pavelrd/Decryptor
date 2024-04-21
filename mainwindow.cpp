@@ -64,6 +64,7 @@ void MainWindow::on_pushButton_encrypt_clicked()
         msgBox.setWindowTitle("Decryptor");
         msgBox.setText("Ошибка при открытии файла, предназначенного для зашифрования!");
         msgBox.exec();
+        sourceFile->close();
         delete sourceFile;
         return;
     }
@@ -93,6 +94,8 @@ void MainWindow::on_pushButton_encrypt_clicked()
         msgBox.setWindowTitle("Decryptor");
         msgBox.setText("Ошибка при открытии файла для зашифрованной информации!");
         msgBox.exec();
+        sourceFile->close();
+        encryptedFile->close();
         delete sourceFile;
         delete encryptedFile;
         return;
@@ -138,6 +141,7 @@ void MainWindow::on_pushButton_decrypt_clicked()
         msgBox.setWindowTitle("Decryptor");
         msgBox.setText("Ошибка при открытии зашифрованного файла");
         msgBox.exec();
+        sourceFile->close();
         delete sourceFile;
         return;
     }
@@ -148,6 +152,7 @@ void MainWindow::on_pushButton_decrypt_clicked()
         msgBox.setWindowTitle("Decryptor");
         msgBox.setText("Зашифрованный файл поврежден, его размер не кратен 16 байтам!");
         msgBox.exec();
+        sourceFile->close();
         delete sourceFile;
         return;
     }
@@ -175,6 +180,8 @@ void MainWindow::on_pushButton_decrypt_clicked()
         msgBox.setWindowTitle("Decryptor");
         msgBox.setText("Ошибка при открытии файла для расшифровки");
         msgBox.exec();
+        sourceFile->close();
+        decryptedFile->close();
         delete sourceFile;
         delete decryptedFile;
         return;

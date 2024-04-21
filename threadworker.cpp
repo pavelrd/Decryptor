@@ -6,45 +6,105 @@
 void threadWorker::run()
 {
 
-    int progressValue = 0;
-
-if(isEncrypt)
-{
-    uint8_t block[16] = {0};
-    uint8_t encryptedBlock[16] = {0};
-
-    // ------- Запись длины файла в начало первого блока, который будет зашифрован
-
-    uint32_t value = sourceFile->size();
-
-    block[0] = value & 0xFF;
-
-    block[1] = ( value >> 8 ) & 0xFF;
-
-    block[2] = ( value >> 16 ) & 0xFF;
-
-    block[3] = ( value >> 24 ) & 0xFF;
-
-    // -------
-
-    uint32_t j = 4; // Начинаем запись файла с 5 байта блока, так как в первые 4 байта записан размер файла
-
-    emit progressChanged(0);
-
-    QByteArray fileBytearray = sourceFile->readAll();
-
-    sourceFile->close();
-
-    delete sourceFile;
-
-    for( uint32_t i = 0 ; i < fileBytearray.length(); i++ )
+    if(isEncrypt)
     {
 
-        block[j] = fileBytearray.at(i);
+        uint8_t block[16] = {0};
+        uint8_t encryptedBlock[16] = {0};
 
-        j++;
+        // ------- Запись длины файла в начало первого блока, который будет зашифрован
 
-        if( j >= 16 )
+        uint32_t value = sourceFile->size();
+
+        block[0] = value & 0xFF;
+
+        block[1] = ( value >> 8 ) & 0xFF;
+
+        block[2] = ( value >> 16 ) & 0xFF;
+
+        block[3] = ( value >> 24 ) & 0xFF;
+
+        // -------
+
+        emit progressChanged(0);
+
+        int progressValue = 0;
+
+        // Начинаем запись файла с 5 байта блока, так как в первые 4 байта записан размер файла
+
+        int currentReadedBytes = 4;
+
+        currentReadedBytes += sourceFile->read( (char*)block+4, 12 );
+
+        do
+        {
+
+            if( currentReadedBytes >= 16 )
+            {
+
+                sync.lock();
+
+                if(pauseFlag)
+                {
+                    pauseCond.wait(&sync); // in this place, your thread will stop to execute until someone calls resume
+                }
+
+                sync.unlock();
+
+                gost12_15_Worker->encrypt(encryptedBlock, block);
+
+                encryptedFile->write((const char*)encryptedBlock, 16);
+
+                int currentProgressValue = ( (int) ( ((double)sourceFile->pos()) / sourceFile->size() * 100 ) );
+
+                if( progressValue < currentProgressValue )
+                {
+                    progressValue = currentProgressValue;
+                    emit progressChanged(progressValue);
+                }
+
+            }
+            else
+            {
+
+                // Файл закончен, при этом блок заполнен не до конца
+
+                // Дополнение блока нулями
+
+                for( int i = currentReadedBytes; i < 16; i++)
+                {
+                    block[i] = 0x00;
+                }
+
+                gost12_15_Worker->encrypt(encryptedBlock, block);
+
+                encryptedFile->write((const char*)encryptedBlock, 16);
+
+                break;
+
+            }
+
+        } while( (currentReadedBytes = sourceFile->read( (char*)block, 16 ) ) > 0 );
+
+        sourceFile->close();
+
+        delete sourceFile;
+
+    }
+    else
+    {
+
+        uint8_t block[16] = {0};
+
+        uint32_t fileSize = 0;
+        uint32_t fileCounter = 0;
+
+        int currentReadedBytes = 0;
+        int progressValue = 0;
+
+        // Начинаем запись файла с 5 байта блока, так как в первые 4 байта записан размер файла
+
+        while( ( currentReadedBytes = sourceFile->read( (char*)block, 16 ) ) > 0 )
         {
 
             sync.lock();
@@ -54,77 +114,11 @@ if(isEncrypt)
             }
             sync.unlock();
 
-            j = 0;
-
-            gost12_15_Worker->encrypt(encryptedBlock, block);
-
-            encryptedFile->write((const char*)encryptedBlock, 16);
-
-            for( uint32_t indexClear = 0 ; indexClear < 16; indexClear++)
-            {
-                block[indexClear] = 0x00;
-            }
-
-            int currentProgressValue = ( (int) ( ((double)i) / fileBytearray.length() * 100 ) );
-
-            if( progressValue < currentProgressValue )
-            {
-                progressValue = currentProgressValue;
-                emit progressChanged(progressValue);
-            }
-
-        }
-
-    }
-
-    if( j != 0 )
-    {
-
-        gost12_15_Worker->encrypt(encryptedBlock, block);
-
-        encryptedFile->write((const char*)encryptedBlock, 16);
-
-    }
-
-}
-else
-{
-
-    QByteArray fileBytearray = sourceFile->readAll();
-
-    sourceFile->close();
-
-    delete sourceFile;
-
-    uint8_t block[16] = {0};
-    uint8_t decryptedBlock[16] = {0};
-
-    uint32_t j = 0;
-    uint32_t fileSize = 0;
-    uint32_t fileCounter = 0;
-
-    for( uint32_t i = 0 ; i < fileBytearray.length(); i++ )
-    {
-
-        block[j] = fileBytearray.at(i);
-
-        j++;
-
-        if( j >= 16 )
-        {
-
-            sync.lock();
-            if(pauseFlag)
-            {
-                pauseCond.wait(&sync); // in this place, your thread will stop to execute until someone calls resume
-            }
-            sync.unlock();
-
-            j = 0;
+            uint8_t decryptedBlock[16];
 
             gost12_15_Worker->decrypt(decryptedBlock, block);
 
-            if( i < 16 )
+            if( sourceFile->pos() <= 16 )
             {
 
                 // Первый блок, в нем первые 4 байта это длина файла, запоминаем эту длин
@@ -163,12 +157,7 @@ else
 
             }
 
-            for( uint32_t indexClear = 0 ; indexClear < 16; indexClear++)
-            {
-                block[indexClear] = 0x00;
-            }
-
-            int currentProgressValue = ( (int) ( ((double)i) / fileBytearray.length() * 100 ) );
+            int currentProgressValue = ( (int) ( ((double) sourceFile->pos()) / sourceFile->size() * 100 ) );
 
             if( progressValue < currentProgressValue )
             {
@@ -176,13 +165,15 @@ else
                 emit progressChanged(progressValue);
             }
 
+
         }
 
+        sourceFile->close();
+
+        delete sourceFile;
+
+
     }
-
-
-
-}
 
     emit progressChanged( 100 );
 
