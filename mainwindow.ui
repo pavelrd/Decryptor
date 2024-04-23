@@ -9,19 +9,19 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>930</width>
-    <height>578</height>
+    <width>569</width>
+    <height>330</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Decryptor_V1</string>
+   <string>Decryptor_V2</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_4">
     <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab_program">
        <attribute name="title">
@@ -32,20 +32,6 @@
          <layout class="QGridLayout" name="gridLayout">
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_5">
-            <item row="0" column="0">
-             <layout class="QHBoxLayout" name="horizontalLayout">
-              <item>
-               <widget class="QLineEdit" name="lineEdit_inputFile"/>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_chooseFile">
-                <property name="text">
-                 <string>Выбрать файл</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
             <item row="1" column="0">
              <layout class="QHBoxLayout" name="horizontalLayout_2">
               <item>
@@ -61,6 +47,31 @@
                  <number>32</number>
                 </property>
                </widget>
+              </item>
+              <item>
+               <layout class="QVBoxLayout" name="verticalLayout">
+                <item>
+                 <widget class="QRadioButton" name="radioButton_change">
+                  <property name="text">
+                   <string>Простая замена</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QRadioButton" name="radioButton_gamma">
+                  <property name="text">
+                   <string>Гаммирование</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QRadioButton" name="radioButton_imit">
+                  <property name="text">
+                   <string>Имитовставка</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -92,36 +103,6 @@
               </item>
              </layout>
             </item>
-            <item row="2" column="0">
-             <widget class="QProgressBar" name="progressBar_status">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="contextMenuPolicy">
-               <enum>Qt::NoContextMenu</enum>
-              </property>
-              <property name="value">
-               <number>0</number>
-              </property>
-              <property name="textVisible">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QPushButton" name="pushButton_encrypt">
-              <property name="text">
-               <string>Шифрование</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QPushButton" name="pushButton_decrypt">
-              <property name="text">
-               <string>Дешифрование</string>
-              </property>
-             </widget>
-            </item>
             <item row="5" column="0">
              <layout class="QHBoxLayout" name="horizontalLayout_5">
               <item>
@@ -145,6 +126,50 @@
                </widget>
               </item>
              </layout>
+            </item>
+            <item row="0" column="0">
+             <layout class="QHBoxLayout" name="horizontalLayout">
+              <item>
+               <widget class="QLineEdit" name="lineEdit_inputFile"/>
+              </item>
+              <item>
+               <widget class="QPushButton" name="pushButton_chooseFile">
+                <property name="text">
+                 <string>Выбрать файл</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="3" column="0">
+             <widget class="QPushButton" name="pushButton_encrypt">
+              <property name="text">
+               <string>Шифрование</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QProgressBar" name="progressBar_status">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="contextMenuPolicy">
+               <enum>Qt::NoContextMenu</enum>
+              </property>
+              <property name="value">
+               <number>0</number>
+              </property>
+              <property name="textVisible">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QPushButton" name="pushButton_decrypt">
+              <property name="text">
+               <string>Дешифрование</string>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
@@ -172,7 +197,11 @@
              </widget>
             </item>
             <item>
-             <widget class="QPlainTextEdit" name="textEdit_sourceHEX"/>
+             <widget class="QPlainTextEdit" name="textEdit_sourceHEX">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
             </item>
             <item>
              <widget class="QLabel" name="label_3">
@@ -185,7 +214,11 @@
              </widget>
             </item>
             <item>
-             <widget class="QPlainTextEdit" name="textEdit_source"/>
+             <widget class="QPlainTextEdit" name="textEdit_source">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>

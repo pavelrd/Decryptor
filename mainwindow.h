@@ -34,6 +34,8 @@ private slots:
 
     void on_pushButton_cancel_clicked();
 
+    void on_radioButton_change_clicked();
+
 private:
     Ui::MainWindow *ui;
 };

@@ -109,7 +109,14 @@ void MainWindow::on_pushButton_encrypt_clicked()
     ui->lineEdit_key->setEnabled(false);
     ui->progressBar_status->setEnabled(true);
 
-    worker.setEncrypt( encryptedFile, sourceFile, &g, true );
+    if(ui->radioButton_change->isChecked())
+    {
+        worker.setEncrypt( encryptedFile, sourceFile, &g, threadWorker::ENCRYPT_SIMPLE );
+    }
+    else if(ui->radioButton_gamma->isChecked())
+    {
+        worker.setEncrypt( encryptedFile, sourceFile, &g, threadWorker::ENCRYPT_GAMMA);
+    }
 
     worker.start();
 
@@ -118,6 +125,50 @@ void MainWindow::on_pushButton_encrypt_clicked()
 
 }
 
+/*
+ * key - 12345, sync - 1,2,3,4,5,6,7,8
+"Data before crypt: 1 2 3 4 5 6 7 8 9 a b c d e f 10 "
+" Data after crypt: fc 69 2b 8b cd 8f e0 1a 60 f 56 1b a2 cf 4c 50 "
+"Data after decrypt: 1 2 3 4 5 6 7 8 9 a b c d e f 10 "
+*/
+        /*
+        vector<uint8_t> in_data = {0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x00,0xff,0xee,0xdd,0xcc,0xbb,0xaa,0x99,0x88};
+
+        vector<uint8_t> out_data(16,0);
+
+        vector<uint8_t> sync = {0x12,0x34,0x56,4,5,6,7,8};
+
+        QString str = "Data before crypt: ";
+
+        for(int i = 0; i < 16;i++)
+        {
+            str += QString::number( in_data[i], 16 ) + QString(" ");
+        }
+
+        qDebug() << str;
+
+        str = " Data after crypt: ";
+
+        out_data = g.gammaCryption(in_data,sync);
+
+        for(int i = 0; i < 16;i++)
+        {
+            str += QString::number( out_data[i], 16 ) + QString(" ");
+        }
+
+        qDebug() << str;
+
+        str = "Data after decrypt: ";
+
+        out_data = g.gammaCryption(out_data,sync);
+
+        for(int i = 0; i < 16;i++)
+        {
+            str += QString::number( out_data[i], 16 ) + QString(" ");
+        }
+
+        qDebug() << str;
+*/
 
 void MainWindow::on_pushButton_decrypt_clicked()
 {
@@ -220,7 +271,14 @@ void MainWindow::on_pushButton_decrypt_clicked()
     ui->lineEdit_key->setEnabled(false);
     ui->progressBar_status->setEnabled(true);
 
-    worker.setEncrypt( decryptedFile, sourceFile, &g, false );
+    if(ui->radioButton_change->isChecked())
+    {
+        worker.setEncrypt( decryptedFile, sourceFile, &g, threadWorker::DECRYPT_SIMPLE );
+    }
+    else if(ui->radioButton_gamma->isChecked())
+    {
+        worker.setEncrypt( decryptedFile, sourceFile, &g, threadWorker::DECRYPT_GAMMA );
+    }
 
     worker.start();
 
@@ -372,3 +430,7 @@ void MainWindow::on_pushButton_cancel_clicked()
 
 }
 
+void MainWindow::on_radioButton_change_clicked()
+{
+
+}

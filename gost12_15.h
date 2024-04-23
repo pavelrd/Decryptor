@@ -25,9 +25,11 @@ public:
     void decrypt(uint8_t* block, uint8_t* encryptedBlock);
     bool isKeySetted();
 
+    vector<uint8_t> gammaCryption(vector<uint8_t> data, vector<uint8_t> sync);
+
 private:
 
-    vector<uint8_t> gammaCryption(vector<uint8_t> data, vector<uint8_t> sync, vector<vector<uint8_t>> roundKeys);
+    void LSXEncryptData( uint8_t* data );
 
     void initRoundConsts();
 
@@ -63,8 +65,8 @@ private:
     static const int blockSize;
     static const int imitoLen;
 
-    uint8_t roundKeys[10][16] = {0};
-    uint8_t roundConsts[32][16] = {0};
+    uint8_t roundKeys[10][16] = {{0}};
+    uint8_t roundConsts[32][16] = {{0}};
 
     bool keySetted = false;
 

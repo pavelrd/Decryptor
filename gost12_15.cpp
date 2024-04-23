@@ -565,51 +565,6 @@ std::vector<uint8_t> gost12_15::longAddition(std::vector<uint8_t> a, std::vector
     return result;
 }
 
-/**
-* \brief Функция режима гаммирования.
-*
-* Зашифровывание и расшифровывание данных в режиме гаммирования.
-* Исходное значение (gammaSync) - уникальная синхропосылка дополняется нулями до размера блока,
-* но на последнем место ставится значение счётчика, равное номеру итерации (начиная с 1).
-* Для каждого блока исходной последовательности, gammaSync шифруется с помощью LSX преобразования.
-* Затем зашифрованная gammaSync побитово накладывается на открытый исходный текст.
-*
-* \param [in] data – исходная последовательно открытого текста.
-* \param [in] sync – синхропосылка.
-* \param [in] roundKeys - матрица раундовых ключей.
-* \return возвращает работы режима гаммирования - зашифрованную (расшифрованную) исходную последовательность.
-*/
-vector<uint8_t> gost12_15::gammaCryption(vector<uint8_t> data, vector<uint8_t> sync, vector<vector<uint8_t>> roundKeys) {
-/*    vector<uint8_t> gammaSync(blockSize, 0);
-    for (int i = 0; i < blockSize / 2; i++) {
-        gammaSync[i] = sync[i];
-    }
-
-    int blockCount = static_cast<int>(data.size() / blockSize);
-
-    vector<uint8_t> encSync;
-    vector<uint8_t> encData(blockCount*blockSize, 0);
-    for (int i = 0; i < blockCount; i++) {
-        encSync = gammaSync;
-
-        encSync = LSXEncryptData(encSync, roundKeys);
-
-        for (int j = 0; j < blockSize; j++) {
-            encData[blockSize*i + j] = data[blockSize*i + j] ^ encSync[j];
-        }
-
-        gammaSync = longAddition(gammaSync, {0x01});
-        if(gammaSync.size() > blockSize) { // Если сложение увеличило длину, то обрезаем.
-            gammaSync.erase(gammaSync.begin());
-        }
-    }
-
-    return encData;
-*/
-    vector<uint8_t> encData;
-    return encData;
-}
-
 
 /**
 * \brief Функция выработки имитовставки.
@@ -699,6 +654,23 @@ vector<uint8_t> gost12_15::getImitoKey(vector<vector<uint8_t>> roundKeys) {
 
 void gost12_15::setKey(const char* key)
 {
+
+    /*
+
+      Тестовый ключ, согласно ГОСТ 34.13-2015
+
+        vector<uint8_t> generalKey(32,0);
+
+        uint8_t otherKey[32]= { 0x88,0x99,0xAA,0xBB,0xCC,0xDD,0xEE,0xFF,
+                            0x00,0x11,0x22,0x33,0x44,0x55,0x66,0x77,
+                            0xFE,0xDC,0xBA,0x98,0x76,0x54,0x32,0x10,
+                            0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF };
+
+        for(int i = 0 ; i < 32; i++)
+        {
+            generalKey[i] = otherKey[i];
+        }
+    */
 
     vector<uint8_t> generalKey(32, 0);
 
@@ -847,3 +819,83 @@ const uint8_t gost12_15::inverseSTable[256] =
 
 const int gost12_15::blockSize = 16;
 const int gost12_15::imitoLen = 8;
+
+/**
+* \brief Функция режима гаммирования.
+*
+* Зашифровывание и расшифровывание данных в режиме гаммирования.
+* Исходное значение (gammaSync) - уникальная синхропосылка дополняется нулями до размера блока,
+* но на последнем место ставится значение счётчика, равное номеру итерации (начиная с 1).
+* Для каждого блока исходной последовательности, gammaSync шифруется с помощью LSX преобразования.
+* Затем зашифрованная gammaSync побитово накладывается на открытый исходный текст.
+*
+* \param [in] data – исходная последовательно открытого текста.
+* \param [in] sync – синхропосылка.
+* \param [in] roundKeys - матрица раундовых ключей.
+* \return возвращает работы режима гаммирования - зашифрованную (расшифрованную) исходную последовательность.
+*/
+
+vector<uint8_t> gost12_15::gammaCryption(vector<uint8_t> data, vector<uint8_t> sync )
+{
+
+    vector <uint8_t> gammaSync(16,0);
+
+    for (int i = 0; i < blockSize / 2; i++) {
+        gammaSync[i] = sync[i];
+    }
+
+    // gammaSync { 0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0 }
+
+    int blockCount = static_cast<int>(data.size() / blockSize);
+
+    vector<uint8_t> encData(blockCount*blockSize, 0);
+    uint8_t encSync[blockSize];
+
+    for (int i = 0; i < blockCount; i++) {
+
+        for(int j = 0; j < blockSize; j++)
+        {
+            encSync[j] = gammaSync[j];
+        }
+
+        LSXEncryptData( encSync );
+
+        for (int j = 0; j < blockSize; j++)
+        {
+           encData[blockSize*i + j] = data[blockSize*i + j] ^ encSync[j];
+        }
+
+        gammaSync = longAddition(gammaSync, {0x01});
+        if(gammaSync.size() > blockSize) { // Если сложение увеличило длину, то обрезаем.
+            gammaSync.erase(gammaSync.begin());
+        }
+
+    }
+
+    return encData;
+
+}
+
+
+/**
+* \brief Функция LSX преобразования.
+*
+* Открытая входная последовательность проходит 9 раундов LSX преобразования.
+* На последнем 10м раунде происходит побитовое наложение раундового ключа.
+*
+* \param [in] data – открытая входная последовательность размера 16 байт.
+* \param [in] roundKeys - матрица раундовых ключей.
+* \return возвращает результат преобразования LSX для исходной последовательности.
+*/
+
+void gost12_15::LSXEncryptData( uint8_t* data )
+{
+
+    for (int i = 0; i < 9; i++)
+    {
+        LSXTransformation( data, roundKeys[i] );
+    }
+
+    XTransformation( data, data, roundKeys[9]);
+
+}

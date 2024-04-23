@@ -6,7 +6,7 @@
 void threadWorker::run()
 {
 
-    if(isEncrypt)
+    if( cryptMode == ENCRYPT_SIMPLE )
     {
 
         uint8_t block[16] = {0};
@@ -86,12 +86,12 @@ void threadWorker::run()
 
         } while( (currentReadedBytes = sourceFile->read( (char*)block, 16 ) ) > 0 );
 
-        sourceFile->close();
 
-        delete sourceFile;
+
+        emit cryptCompteted(1);
 
     }
-    else
+    else if( cryptMode == DECRYPT_SIMPLE )
     {
 
         uint8_t block[16] = {0};
@@ -168,16 +168,52 @@ void threadWorker::run()
 
         }
 
-        sourceFile->close();
 
-        delete sourceFile;
 
+        emit cryptCompteted(0);
+
+    }
+    else if( ( cryptMode == ENCRYPT_GAMMA) || ( cryptMode == DECRYPT_GAMMA ) )
+    {
+
+        vector<uint8_t> sync = {0x12,0x34,0x56,0x78,0x90,0xab,0xce,0xf0};
+
+        vector<uint8_t> in_data(sourceFile->size(), 0);
+
+        QByteArray ba = sourceFile->readAll();
+
+        for( uint32_t i = 0 ; i < sourceFile->size(); i++ )
+        {
+            in_data[i] = ba.at(i);
+        }
+
+        vector<uint8_t> out_data = gost12_15_Worker->gammaCryption(in_data,sync);
+
+        QByteArray outByteArray;
+
+        for( uint32_t i = 0; i < out_data.size(); i++ )
+        {
+            outByteArray.append(out_data[i]);
+        }
+
+        encryptedFile->write(outByteArray);
+
+        if( cryptMode == ENCRYPT_GAMMA )
+        {
+            emit cryptCompteted(1);
+        }
+        else
+        {
+            emit cryptCompteted(0);
+        }
 
     }
 
     emit progressChanged( 100 );
 
-    emit cryptCompteted(isEncrypt);
+    sourceFile->close();
+
+    delete sourceFile;
 
     encryptedFile->close();
 
@@ -185,12 +221,12 @@ void threadWorker::run()
 
 }
 
-void threadWorker::setEncrypt( QFile* _encryptedFile, QFile* _sourceFile, gost12_15 *_gost12_15_Worker, bool _isEncrypt )
+void threadWorker::setEncrypt( QFile* _encryptedFile, QFile* _sourceFile, gost12_15 *_gost12_15_Worker, cryptMode_t _cryptMode )
 {
     encryptedFile = _encryptedFile;
     sourceFile    = _sourceFile;
     gost12_15_Worker = _gost12_15_Worker;
-    isEncrypt = _isEncrypt;
+    cryptMode = _cryptMode;
 }
 
 void threadWorker::resume()
