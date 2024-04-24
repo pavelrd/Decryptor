@@ -519,3 +519,37 @@ void MainWindow::on_radioButton_gamma_clicked()
     }
 }
 
+
+void MainWindow::on_checkBox_hide_clicked(bool checked)
+{
+    if(checked)
+    {
+        ui->lineEdit_key->setEchoMode(QLineEdit::Password);
+    }
+    else
+    {
+        ui->lineEdit_key->setEchoMode(QLineEdit::Normal);
+    }
+}
+
+
+void MainWindow::on_checkBox_hex_clicked(bool checked)
+{
+    if(checked)
+    {
+        if(ui->radioButton_gamma->isChecked())
+        {
+            ui->lineEdit_sync->clear();
+        }
+        ui->lineEdit_key->clear();
+    }
+    else
+    {
+        if(ui->radioButton_gamma->isChecked())
+        {
+            ui->lineEdit_sync->clear();
+        }
+        ui->lineEdit_key->clear();
+    }
+}
+

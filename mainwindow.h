@@ -38,6 +38,10 @@ private slots:
 
     void on_radioButton_gamma_clicked();
 
+    void on_checkBox_hide_clicked(bool checked);
+
+    void on_checkBox_hex_clicked(bool checked);
+
 private:
     Ui::MainWindow *ui;
 };

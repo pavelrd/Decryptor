@@ -981,3 +981,4 @@ void gost12_15::LSXEncryptData( uint8_t* data )
     XTransformation( data, data, roundKeys[9]);
 
 }
+

@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>746</width>
-    <height>522</height>
+    <width>556</width>
+    <height>338</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -70,6 +70,13 @@
               </item>
              </layout>
             </item>
+            <item row="3" column="0">
+             <widget class="QPushButton" name="pushButton_encrypt">
+              <property name="text">
+               <string>Шифрование</string>
+              </property>
+             </widget>
+            </item>
             <item row="2" column="0">
              <widget class="QProgressBar" name="progressBar_status">
               <property name="enabled">
@@ -83,20 +90,6 @@
               </property>
               <property name="textVisible">
                <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QPushButton" name="pushButton_encrypt">
-              <property name="text">
-               <string>Шифрование</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QPushButton" name="pushButton_decrypt">
-              <property name="text">
-               <string>Дешифрование</string>
               </property>
              </widget>
             </item>
@@ -142,11 +135,22 @@
                    </widget>
                   </item>
                   <item>
-                   <widget class="QCheckBox" name="checkBox_hex">
-                    <property name="text">
-                     <string>HEX</string>
-                    </property>
-                   </widget>
+                   <layout class="QVBoxLayout" name="verticalLayout_5">
+                    <item>
+                     <widget class="QCheckBox" name="checkBox_hex">
+                      <property name="text">
+                       <string>HEX</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QCheckBox" name="checkBox_hide">
+                      <property name="text">
+                       <string>Скрыть</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
                   </item>
                  </layout>
                 </item>
@@ -216,6 +220,13 @@
                </widget>
               </item>
              </layout>
+            </item>
+            <item row="4" column="0">
+             <widget class="QPushButton" name="pushButton_decrypt">
+              <property name="text">
+               <string>Дешифрование</string>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
