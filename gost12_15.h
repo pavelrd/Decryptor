@@ -20,7 +20,9 @@ class gost12_15
 public:
 
     void setKey(const char *key);
+    void setKey_HEX(const char *key);
     void setSync(const char *_sync);
+    void setSync_HEX(const char *_sync);
     void clearKey();
     void clearSync();
     void encrypt(uint8_t* encryptedBlock, uint8_t *block);

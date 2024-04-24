@@ -293,8 +293,8 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
 
 void MainWindow::on_pushButton_setKey_clicked()
-{
-   ui->pushButton_generationKey->setEnabled(false);
+{       
+    ui->pushButton_generationKey->setEnabled(false);
 
    if(ui->lineEdit_key->text().isEmpty())
    {
@@ -336,19 +336,44 @@ void MainWindow::on_pushButton_setKey_clicked()
        if(ui->radioButton_gamma->isChecked())
        {
            ui->lineEdit_sync->setStyleSheet("QLineEdit { background: rgb(0, 255, 255); selection-background-color: rgb(0, 0, 255); }");
+
+           if(ui->checkBox_hex->isChecked())
+           {
+
+           }
            g.setSync(ui->lineEdit_sync->text().toStdString().c_str());
        }
 
        ui->lineEdit_key->setStyleSheet("QLineEdit { background: rgb(0, 255, 255); selection-background-color: rgb(0, 0, 255); }");
        ui->pushButton_setKey->setText("Сбросить");
+
+       if(ui->checkBox_hex->isChecked())
+       {
+
+       }
        g.setKey( ui->lineEdit_key->text().toStdString().c_str() );
    }
 }
 
-const char *symbolsForRandomKey = "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM:<>'\".,|?;\\/[]{}-=!@#$%^&*()_+~";
 
 void MainWindow::on_pushButton_generationKey_clicked()
 {
+
+    const char *acsciiSymbolsForRandomKey = "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM:<>'\".,|?;\\/[]{}-=!@#$%^&*()_+~";
+
+    const char *hexSymbolsForRandomKey = "1234567890ABCDEF";
+
+    const char* symbolsForRandomKey = 0;
+
+    if( ui->checkBox_hex->isChecked() )
+    {
+        symbolsForRandomKey = hexSymbolsForRandomKey;
+    }
+    else
+    {
+        symbolsForRandomKey = acsciiSymbolsForRandomKey;
+    }
+
 
     QString generation_key;
     QString generation_sync;
@@ -361,8 +386,8 @@ void MainWindow::on_pushButton_generationKey_clicked()
     if(ui->radioButton_gamma->isChecked())
     {
         uint8_t min = 1;
-        uint8_t max = 8;
-        for(int i = 0; i < ( rand() %(max - min + 1) + min); i++)
+        uint8_t max = 9;
+        for(int i = 0; i < ( rand() % (max - min + 1) + min); i++)
         {
             generation_sync += symbolsForRandomKey [rand() % strlen(symbolsForRandomKey)];
         }

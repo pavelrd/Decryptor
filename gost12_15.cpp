@@ -655,23 +655,6 @@ vector<uint8_t> gost12_15::getImitoKey(vector<vector<uint8_t>> roundKeys) {
 void gost12_15::setKey(const char* key)
 {
 
-    /*
-
-      Тестовый ключ, согласно ГОСТ 34.13-2015
-
-        vector<uint8_t> generalKey(32,0);
-
-        uint8_t otherKey[32]= { 0x88,0x99,0xAA,0xBB,0xCC,0xDD,0xEE,0xFF,
-                            0x00,0x11,0x22,0x33,0x44,0x55,0x66,0x77,
-                            0xFE,0xDC,0xBA,0x98,0x76,0x54,0x32,0x10,
-                            0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF };
-
-        for(int i = 0 ; i < 32; i++)
-        {
-            generalKey[i] = otherKey[i];
-        }
-    */
-
     vector<uint8_t> generalKey(32, 0);
 
     for( unsigned int i = 0 ; ( i < strlen(key) ) && ( i < 32) ; i++ )
@@ -687,6 +670,33 @@ void gost12_15::setKey(const char* key)
 
 }
 
+void gost12_15::setKey_HEX(const char* key)
+{
+    vector<uint8_t> generalKey(32, 0);
+
+    for( unsigned int i = 0 ; ( i < strlen(key) ) && ( i < 32) ; i++ )
+    {
+
+        char bufstr[3] = {0};
+
+        bufstr[0] = key[i];
+
+        if( ( i + 1 ) < strlen(key) )
+        {
+            bufstr[1] = key[i+1];
+        }
+
+        generalKey[i] = strtol(bufstr, NULL, 16);
+
+    }
+
+    initRoundConsts();
+
+    generatingRoundKeys(generalKey);
+
+    keySetted = true;
+}
+
 void gost12_15::setSync(const char *_sync)
 {
     for(uint8_t i = 0; i < blockSize / 2; i++)
@@ -698,6 +708,32 @@ void gost12_15::setSync(const char *_sync)
 
         sync[i] = _sync[i];
     }
+}
+
+void gost12_15::setSync_HEX(const char *_sync)
+{
+
+    for(uint8_t i = 0; i < blockSize / 2; i++)
+    {
+        sync[i] = 0;
+    }
+
+    for (uint8_t i = 0; (i < (blockSize / 2) ) && (i < strlen(_sync)); i++)
+    {
+
+        char bufstr[3] = {0};
+
+        bufstr[0] = _sync[i];
+
+        if( ( i + 1 ) < strlen(_sync) )
+        {
+            bufstr[1] = _sync[i+1];
+        }
+
+        sync[i] = strtol(bufstr, NULL, 16);  //  _sync[i];
+
+    }
+
 }
 
 void gost12_15::encrypt(uint8_t* encryptedBlock, uint8_t* block)
