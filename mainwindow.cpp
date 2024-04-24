@@ -108,6 +108,7 @@ void MainWindow::on_pushButton_encrypt_clicked()
     ui->pushButton_setKey->setEnabled(false);
     ui->lineEdit_key->setEnabled(false);
     ui->progressBar_status->setEnabled(true);
+    ui->lineEdit_sync->setEnabled(false);
 
     if(ui->radioButton_change->isChecked())
     {
@@ -270,6 +271,7 @@ void MainWindow::on_pushButton_decrypt_clicked()
     ui->pushButton_setKey->setEnabled(false);
     ui->lineEdit_key->setEnabled(false);
     ui->progressBar_status->setEnabled(true);
+    ui->lineEdit_sync->setEnabled(false);
 
     if(ui->radioButton_change->isChecked())
     {
@@ -292,6 +294,7 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
 void MainWindow::on_pushButton_setKey_clicked()
 {
+   ui->pushButton_generationKey->setEnabled(false);
 
    if(ui->lineEdit_key->text().isEmpty())
    {
@@ -299,26 +302,47 @@ void MainWindow::on_pushButton_setKey_clicked()
        msgBox.setWindowTitle("Decryptor");
        msgBox.setText("Заполните поле ключа!");
        msgBox.exec();
+       ui->pushButton_generationKey->setEnabled(true);
+       return;
+   }
+
+   if(ui->lineEdit_sync->text().isEmpty() && ui->radioButton_gamma->isChecked())
+   {
+       QMessageBox msgBox;
+       msgBox.setWindowTitle("Decryptor");
+       msgBox.setText("Заполните поле синхропосылки!");
+       msgBox.exec();
+       ui->pushButton_generationKey->setEnabled(true);
        return;
    }
 
    if( ui->pushButton_setKey->text() == "Сбросить" )
    {
+       if(ui->radioButton_gamma->isChecked())
+       {
+           ui->lineEdit_sync->clear();
+           ui->lineEdit_sync->setStyleSheet("QLineEdit { background: rgb(255, 255, 255); selection-background-color: rgb(0, 0, 255); }");
+           g.clearSync();
+       }
        ui->lineEdit_key->clear();
        ui->lineEdit_key->setStyleSheet("QLineEdit { background: rgb(255, 255, 255); selection-background-color: rgb(0, 0, 255); }");
        ui->pushButton_setKey->setText("Задать");
        ui->progressBar_status->setValue( 0 );
+       ui->pushButton_generationKey->setEnabled(true);
        g.clearKey();
    }
    else
    {
+       if(ui->radioButton_gamma->isChecked())
+       {
+           ui->lineEdit_sync->setStyleSheet("QLineEdit { background: rgb(0, 255, 255); selection-background-color: rgb(0, 0, 255); }");
+           g.setSync(ui->lineEdit_sync->text().toStdString().c_str());
+       }
+
        ui->lineEdit_key->setStyleSheet("QLineEdit { background: rgb(0, 255, 255); selection-background-color: rgb(0, 0, 255); }");
        ui->pushButton_setKey->setText("Сбросить");
        g.setKey( ui->lineEdit_key->text().toStdString().c_str() );
    }
-
-
-
 }
 
 const char *symbolsForRandomKey = "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM:<>'\".,|?;\\/[]{}-=!@#$%^&*()_+~";
@@ -327,12 +351,24 @@ void MainWindow::on_pushButton_generationKey_clicked()
 {
 
     QString generation_key;
+    QString generation_sync;
 
     for(int i = 0; i < ui->spinBox_keyLength->value(); i++)
     {
             generation_key += symbolsForRandomKey[ rand() % strlen(symbolsForRandomKey) ];
     }
 
+    if(ui->radioButton_gamma->isChecked())
+    {
+        uint8_t min = 1;
+        uint8_t max = 8;
+        for(int i = 0; i < ( rand() %(max - min + 1) + min); i++)
+        {
+            generation_sync += symbolsForRandomKey [rand() % strlen(symbolsForRandomKey)];
+        }
+    }
+
+    ui->lineEdit_sync->setText(generation_sync);
     ui->lineEdit_key->setText(generation_key);
 
 }
@@ -347,6 +383,7 @@ void MainWindow::encryptShow(bool isEncrypt)
     ui->pushButton_setKey->setEnabled(true);
     ui->lineEdit_key->setEnabled(true);
     ui->progressBar_status->setEnabled(false);
+    ui->lineEdit_sync->setEnabled(true);
 
     ui->pushButton_pause->setEnabled(false);
     ui->pushButton_cancel->setEnabled(false);
@@ -360,6 +397,9 @@ void MainWindow::encryptShow(bool isEncrypt)
     if( isEncrypt )
     {
         filenamePath = ui->lineEdit_inputFile->text()+".crypt";
+
+        ui->pushButton_generationKey->setEnabled(false);
+
         msgBox.setText("Шифрование файла завершено!");
 
     }
@@ -370,7 +410,10 @@ void MainWindow::encryptShow(bool isEncrypt)
 
         filenamePath.chop(6);
 
+        ui->pushButton_generationKey->setEnabled(false);
+
         msgBox.setText("Дешифрование файла завершено!");
+
 
     }
 
@@ -432,5 +475,22 @@ void MainWindow::on_pushButton_cancel_clicked()
 
 void MainWindow::on_radioButton_change_clicked()
 {
-
+    if(ui->radioButton_change->isChecked())
+    {
+       ui->lineEdit_sync->setStyleSheet("QLineEdit { background: rgb(255, 255, 255); selection-background-color: rgb(0, 0, 255); }");
+       ui->lineEdit_sync->clear();
+       ui->lineEdit_sync->setEnabled(false);
+       ui->label_sync->setEnabled(false);
+       g.clearSync();
+    }
 }
+
+void MainWindow::on_radioButton_gamma_clicked()
+{
+    if(ui->radioButton_gamma->isChecked())
+    {
+        ui->lineEdit_sync->setEnabled(true);
+        ui->label_sync->setEnabled(true);
+    }
+}
+

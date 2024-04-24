@@ -176,8 +176,6 @@ void threadWorker::run()
     else if( ( cryptMode == ENCRYPT_GAMMA) || ( cryptMode == DECRYPT_GAMMA ) )
     {
 
-        vector<uint8_t> sync = {0x12,0x34,0x56,0x78,0x90,0xab,0xce,0xf0};
-
         vector<uint8_t> in_data(sourceFile->size(), 0);
 
         QByteArray ba = sourceFile->readAll();
@@ -187,7 +185,7 @@ void threadWorker::run()
             in_data[i] = ba.at(i);
         }
 
-        vector<uint8_t> out_data = gost12_15_Worker->gammaCryption(in_data,sync);
+        vector<uint8_t> out_data = gost12_15_Worker->gammaCryption(in_data);
 
         QByteArray outByteArray;
 

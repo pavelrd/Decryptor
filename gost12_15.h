@@ -20,12 +20,15 @@ class gost12_15
 public:
 
     void setKey(const char *key);
+    void setSync(const char *_sync);
     void clearKey();
+    void clearSync();
     void encrypt(uint8_t* encryptedBlock, uint8_t *block);
     void decrypt(uint8_t* block, uint8_t* encryptedBlock);
     bool isKeySetted();
+    bool isSyncSetted();
 
-    vector<uint8_t> gammaCryption(vector<uint8_t> data, vector<uint8_t> sync);
+    vector<uint8_t> gammaCryption(vector<uint8_t> data);
 
 private:
 
@@ -62,13 +65,20 @@ private:
 
     void generatingRoundKeys(vector<uint8_t> key);
 
-    static const int blockSize;
-    static const int imitoLen;
-
     uint8_t roundKeys[10][16] = {{0}};
     uint8_t roundConsts[32][16] = {{0}};
 
+    uint8_t sync[16] = {0};
+
+    static const int blockSize;
+    static const int imitoLen;
+
+
+
     bool keySetted = false;
+    bool syncSetted = false;
+
+
 
     static const uint8_t generatingPolynom; //Полином x ^ 8 + x ^ 7 + x ^ 6 + x + 1
 

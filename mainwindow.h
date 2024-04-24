@@ -36,6 +36,8 @@ private slots:
 
     void on_radioButton_change_clicked();
 
+    void on_radioButton_gamma_clicked();
+
 private:
     Ui::MainWindow *ui;
 };

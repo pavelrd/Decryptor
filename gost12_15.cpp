@@ -687,6 +687,19 @@ void gost12_15::setKey(const char* key)
 
 }
 
+void gost12_15::setSync(const char *_sync)
+{
+    for(uint8_t i = 0; i < blockSize / 2; i++)
+    {
+        sync[i] = 0;
+    }
+
+    for (uint8_t i = 0; (i < (blockSize / 2) ) && (i < strlen(_sync)); i++) {
+
+        sync[i] = _sync[i];
+    }
+}
+
 void gost12_15::encrypt(uint8_t* encryptedBlock, uint8_t* block)
 {
 
@@ -726,10 +739,21 @@ bool gost12_15::isKeySetted()
     return keySetted;
 }
 
+bool gost12_15::isSyncSetted()
+{
+    return syncSetted;
+}
+
 void gost12_15::clearKey()
 {
     keySetted = false;
 }
+
+void gost12_15:: clearSync()
+{
+    syncSetted = false;
+}
+
 
 const uint8_t gost12_15::generatingPolynom = 0xc3; //Полином x ^ 8 + x ^ 7 + x ^ 6 + x + 1
 
@@ -835,10 +859,10 @@ const int gost12_15::imitoLen = 8;
 * \return возвращает работы режима гаммирования - зашифрованную (расшифрованную) исходную последовательность.
 */
 
-vector<uint8_t> gost12_15::gammaCryption(vector<uint8_t> data, vector<uint8_t> sync )
+vector<uint8_t> gost12_15::gammaCryption(vector<uint8_t> data)
 {
 
-    vector <uint8_t> gammaSync(16,0);
+    vector<uint8_t> gammaSync(16,0);
 
     for (int i = 0; i < blockSize / 2; i++) {
         gammaSync[i] = sync[i];
@@ -873,7 +897,6 @@ vector<uint8_t> gost12_15::gammaCryption(vector<uint8_t> data, vector<uint8_t> s
     }
 
     return encData;
-
 }
 
 
