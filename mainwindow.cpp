@@ -198,7 +198,7 @@ void MainWindow::on_pushButton_decrypt_clicked()
         return;
     }
 
-    if( sourceFile->size() % 16 != 0 )
+    if( (sourceFile->size() % 16 != 0) && ( ! ui->radioButton_gamma->isChecked() ) )
     {
         QMessageBox msgBox;
         msgBox.setWindowTitle("Decryptor");

@@ -870,23 +870,35 @@ vector<uint8_t> gost12_15::gammaCryption(vector<uint8_t> data)
 
     // gammaSync { 0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0 }
 
-    int blockCount = static_cast<int>(data.size() / blockSize);
+    uint32_t blockCount = static_cast<int>(data.size() / blockSize);
 
-    vector<uint8_t> encData(blockCount*blockSize, 0);
+    if((data.size() % blockSize) != 0)
+    {
+         blockCount++;
+    }
+
+    vector<uint8_t> encData(data.size(), 0);
     uint8_t encSync[blockSize];
 
-    for (int i = 0; i < blockCount; i++) {
+    for (uint32_t i = 0; i < blockCount; i++) {
 
-        for(int j = 0; j < blockSize; j++)
+        for(uint8_t j = 0; j < blockSize; j++)
         {
             encSync[j] = gammaSync[j];
         }
 
         LSXEncryptData( encSync );
 
-        for (int j = 0; j < blockSize; j++)
+        for (uint8_t j = 0; j < blockSize; j++)
         {
-           encData[blockSize*i + j] = data[blockSize*i + j] ^ encSync[j];
+            if( (blockSize*i + j) < data.size() )
+            {
+                encData[blockSize*i + j] = data[blockSize*i + j] ^ encSync[j];
+            }
+            else
+            {
+                break;
+            }
         }
 
         gammaSync = longAddition(gammaSync, {0x01});
