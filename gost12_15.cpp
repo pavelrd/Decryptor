@@ -844,6 +844,26 @@ const uint8_t gost12_15::inverseSTable[256] =
 const int gost12_15::blockSize = 16;
 const int gost12_15::imitoLen = 8;
 
+void gost12_15::gammaCryptionStart()
+{
+
+    if( gammaSync.size() != 16 )
+    {
+        gammaSync.resize(16,0);
+    }
+
+    for( int i = 0 ; i < 16; i++ )
+    {
+        gammaSync[i] = 0;
+    }
+
+    for (int i = 0; i < blockSize / 2; i++)
+    {
+        gammaSync[i] = sync[i];
+    }
+
+}
+
 /**
 * \brief Функция режима гаммирования.
 *
@@ -859,28 +879,20 @@ const int gost12_15::imitoLen = 8;
 * \return возвращает работы режима гаммирования - зашифрованную (расшифрованную) исходную последовательность.
 */
 
-vector<uint8_t> gost12_15::gammaCryption(vector<uint8_t> data)
+void gost12_15::gammaCryption( uint8_t* out_data, uint8_t* in_data, uint32_t size )
 {
 
-    vector<uint8_t> gammaSync(16,0);
+    uint32_t blockCount = static_cast<int>(size / blockSize);
 
-    for (int i = 0; i < blockSize / 2; i++) {
-        gammaSync[i] = sync[i];
-    }
-
-    // gammaSync { 0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0 }
-
-    uint32_t blockCount = static_cast<int>(data.size() / blockSize);
-
-    if((data.size() % blockSize) != 0)
+    if((size % blockSize) != 0)
     {
          blockCount++;
     }
 
-    vector<uint8_t> encData(data.size(), 0);
     uint8_t encSync[blockSize];
 
-    for (uint32_t i = 0; i < blockCount; i++) {
+    for (uint32_t i = 0; i < blockCount; i++)
+    {
 
         for(uint8_t j = 0; j < blockSize; j++)
         {
@@ -891,9 +903,9 @@ vector<uint8_t> gost12_15::gammaCryption(vector<uint8_t> data)
 
         for (uint8_t j = 0; j < blockSize; j++)
         {
-            if( (blockSize*i + j) < data.size() )
+            if( (blockSize*i + j) < size )
             {
-                encData[blockSize*i + j] = data[blockSize*i + j] ^ encSync[j];
+                out_data[blockSize*i + j] = in_data[blockSize*i + j] ^ encSync[j];
             }
             else
             {
@@ -908,7 +920,6 @@ vector<uint8_t> gost12_15::gammaCryption(vector<uint8_t> data)
 
     }
 
-    return encData;
 }
 
 

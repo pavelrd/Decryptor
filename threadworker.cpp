@@ -176,25 +176,36 @@ void threadWorker::run()
     else if( ( cryptMode == ENCRYPT_GAMMA) || ( cryptMode == DECRYPT_GAMMA ) )
     {
 
-        vector<uint8_t> in_data(sourceFile->size(), 0);
+        uint8_t in_buffer[16];
+        uint8_t out_buffer[16];
 
-        QByteArray ba = sourceFile->readAll();
+        int progressValue = 0;
 
-        for( uint32_t i = 0 ; i < sourceFile->size(); i++ )
+        gost12_15_Worker->gammaCryptionStart();
+
+        while( 1 )
         {
-            in_data[i] = ba.at(i);
+
+            int readedBytes = sourceFile->read( (char*) in_buffer, 16 );
+
+            if( readedBytes == 0 )
+            {
+                break;
+            }
+
+            gost12_15_Worker->gammaCryption( out_buffer, in_buffer, readedBytes );
+
+            encryptedFile->write( (char*)out_buffer, readedBytes );
+
+            int currentProgressValue = ( (int) ( ((double) sourceFile->pos()) / sourceFile->size() * 100 ) );
+
+            if( progressValue < currentProgressValue )
+            {
+                progressValue = currentProgressValue;
+                emit progressChanged(progressValue);
+            }
+
         }
-
-        vector<uint8_t> out_data = gost12_15_Worker->gammaCryption(in_data);
-
-        QByteArray outByteArray;
-
-        for( uint32_t i = 0; i < out_data.size(); i++ )
-        {
-            outByteArray.append(out_data[i]);
-        }
-
-        encryptedFile->write(outByteArray);
 
         if( cryptMode == ENCRYPT_GAMMA )
         {

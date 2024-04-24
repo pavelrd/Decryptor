@@ -28,7 +28,8 @@ public:
     bool isKeySetted();
     bool isSyncSetted();
 
-    vector<uint8_t> gammaCryption(vector<uint8_t> data);
+    void gammaCryptionStart();
+    void gammaCryption(uint8_t *out_data, uint8_t *in_data, uint32_t size);
 
 private:
 
@@ -69,6 +70,8 @@ private:
     uint8_t roundConsts[32][16] = {{0}};
 
     uint8_t sync[16] = {0};
+
+    vector<uint8_t> gammaSync;
 
     static const int blockSize;
     static const int imitoLen;
