@@ -10,6 +10,16 @@ QMAKE_CFLAGS_RELEASE -= -O2
 QMAKE_CFLAGS_RELEASE -= -O3
 QMAKE_CFLAGS_RELEASE += -Ofast
 
+QMAKE_CFLAGS_RELEASE += -Werror=return-type
+QMAKE_CFLAGS_RELEASE += -Werror=float-equal
+QMAKE_CFLAGS_RELEASE += -Werror=uninitialized
+QMAKE_CFLAGS_RELEASE += -Werror=switch
+
+QMAKE_CXXFLAGS_RELEASE += -Werror=return-type
+QMAKE_CXXFLAGS_RELEASE += -Werror=float-equal
+QMAKE_CXXFLAGS_RELEASE += -Werror=uninitialized
+QMAKE_CXXFLAGS_RELEASE += -Werror=switch
+
 QMAKE_LFLAGS_RELEASE += -static -static-libgcc -static-libstdc++
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
