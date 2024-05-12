@@ -13,6 +13,7 @@
 * \param [in] polynom2 – второй многочлен для умножения.
 * \return возвращает результат умножения двух многочленов.
 */
+
 uint8_t gost12_15::galoisMult(uint8_t polynom1, uint8_t polynom2)
 {
     uint8_t multRes = 0;

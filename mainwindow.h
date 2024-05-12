@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QFile>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -44,5 +45,9 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+    int workerCompteteCounter = 0;
+    void disable_elements_before_crypt();
+    void enable_elements_after_crypt();
+    bool openFile(QFile* file, QFile::OpenMode flags , QString errorMessage );
 };
 #endif // MAINWINDOW_H

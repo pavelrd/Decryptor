@@ -9,9 +9,16 @@
 #include <QDebug>
 #include <QFile>
 
-gost12_15 g;
+#define BLOCK_SIZE       16
+#define MAX_THREAD_COUNT 16
+#define CRYPT_FILE_HEADER_LENGTH    4
 
-threadWorker worker;
+gost12_15 g[MAX_THREAD_COUNT];
+
+threadWorker worker[MAX_THREAD_COUNT];
+
+QFile* sourceFiles[MAX_THREAD_COUNT]    = {0};
+QFile* encryptedFiles[MAX_THREAD_COUNT] = {0};
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -20,9 +27,11 @@ MainWindow::MainWindow(QWidget *parent)
     srand(time(NULL));
     ui->setupUi(this);
 
-
-    connect(&worker, SIGNAL(progressChanged(int)), ui->progressBar_status, SLOT(setValue(int)));
-    connect(&worker, SIGNAL(cryptCompteted(bool)), this, SLOT(encryptShow(bool)));
+    for(int i = 0 ; i < MAX_THREAD_COUNT; i++)
+    {
+        connect(&worker[i], SIGNAL(progressChanged(int)), ui->progressBar_status, SLOT(setValue(int)));
+        connect(&worker[i], SIGNAL(cryptCompteted(bool)), this, SLOT(encryptShow(bool)));
+    }
 
 }
 
@@ -41,35 +50,33 @@ void MainWindow::on_pushButton_chooseFile_clicked()
 
 }
 
-
 void MainWindow::on_pushButton_encrypt_clicked()
 {
-    if( !g.isKeySetted() )
+
+    disable_elements_before_crypt();
+
+    if( ! ( g[0].isKeySetted() ) )
     {
         QMessageBox msgBox;
         msgBox.setWindowTitle("Decryptor");
         msgBox.setText("Не задан ключ!");
         msgBox.exec();
+        enable_elements_after_crypt();
         return;
     }
 
     QString fileNamePath = ui->lineEdit_inputFile->text();
 
-    QFile* sourceFile = new QFile(fileNamePath);
+    sourceFiles[0] = new QFile(fileNamePath);
 
-    if( !sourceFile->open(QIODevice::ReadOnly | QIODevice::Unbuffered) )
+    if( !openFile( sourceFiles[0], QIODevice::ReadOnly, "Ошибка при открытии файла, предназначенного для зашифрования!" ) )
     {
-        // Ошибка при открытии файла
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("Decryptor");
-        msgBox.setText("Ошибка при открытии файла, предназначенного для зашифрования!");
-        msgBox.exec();
-        sourceFile->close();
-        delete sourceFile;
+        delete sourceFiles[0];
+        enable_elements_after_crypt();
         return;
     }
 
-    QByteArray sourceFileData = sourceFile->read(16000);
+    QByteArray sourceFileData = sourceFiles[0]->read(16000);
 
     ui->textEdit_source->clear();
 
@@ -82,134 +89,135 @@ void MainWindow::on_pushButton_encrypt_clicked()
     ui->textEdit_result->clear();
     ui->textEdit_resultHEX->clear();
 
-    sourceFile->seek(0);
+    sourceFiles[0]->seek(0);
 
-    QFile* encryptedFile = new QFile(fileNamePath+".crypt");
+    encryptedFiles[0] = new QFile(fileNamePath+".crypt");
 
-    if( !encryptedFile->open(QIODevice::WriteOnly|QIODevice::Truncate) )
+    if( !openFile(encryptedFiles[0], QIODevice::WriteOnly|QIODevice::Truncate, "Ошибка при открытии файла для зашифрованной информации!") )
     {
-        // Ошибка при открытии файла
-
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("Decryptor");
-        msgBox.setText("Ошибка при открытии файла для зашифрованной информации!");
-        msgBox.exec();
-        sourceFile->close();
-        encryptedFile->close();
-        delete sourceFile;
-        delete encryptedFile;
+        sourceFiles[0]->close();
+        delete sourceFiles[0];
+        delete encryptedFiles[0];
+        enable_elements_after_crypt();
         return;
     }
 
-    ui->pushButton_chooseFile->setEnabled(false);
-    ui->pushButton_decrypt->setEnabled(false);
-    ui->pushButton_encrypt->setEnabled(false);
-    ui->pushButton_generationKey->setEnabled(false);
-    ui->pushButton_setKey->setEnabled(false);
-    ui->lineEdit_key->setEnabled(false);
-    ui->progressBar_status->setEnabled(true);
-    ui->lineEdit_sync->setEnabled(false);
-
     if(ui->radioButton_change->isChecked())
     {
-        worker.setEncrypt( encryptedFile, sourceFile, &g, threadWorker::ENCRYPT_SIMPLE );
+
+        int threadCount = ui->spinBox_threadCount->value();
+
+        if( ( sourceFiles[0]->size() < 65535 ) || ( threadCount <= 1 ) )
+        {
+
+            worker[0].setEncrypt( encryptedFiles[0], sourceFiles[0], sourceFiles[0]->size(), true, &(g[0]), threadWorker::ENCRYPT_SIMPLE );
+
+            worker[0].start();
+
+        }
+        else
+        {
+
+            qint64 fullSize = sourceFiles[0]->size();
+
+            quint64 partSize = ( ( fullSize / BLOCK_SIZE ) / threadCount ) * BLOCK_SIZE; // 12345 / 16 / 4 = 192 * 16 = 3072
+
+            worker[0].setEncrypt( encryptedFiles[0], sourceFiles[0], partSize - CRYPT_FILE_HEADER_LENGTH, true, &(g[0]), threadWorker::ENCRYPT_SIMPLE );
+
+            for( int i = 1 ; ( i < threadCount ) && ( i < MAX_THREAD_COUNT ); i++ )
+            {
+
+                sourceFiles[i]    = new QFile(fileNamePath);
+                encryptedFiles[i] = new QFile(fileNamePath + QString(".crypt") + QString::number(i) );
+
+                if( !openFile(sourceFiles[i], QIODevice::ReadOnly, "Ошибка при повторном открытии исходного файла! Повторное открытие файла нужно для многопоточного шифрования.") )
+                {
+                    return;
+                }
+
+                if( !openFile(encryptedFiles[i], QIODevice::ReadWrite|QIODevice::Truncate, "Ошибка при открытии одного из временных выходных файлов!") )
+                {
+                    return;
+                }
+
+                volatile uint32_t chunkSize = ( i < (threadCount - 1) ) ? partSize : fullSize - ( ( partSize * i ) - CRYPT_FILE_HEADER_LENGTH);
+
+                sourceFiles[i]->seek( (partSize * i) - CRYPT_FILE_HEADER_LENGTH );
+
+                worker[i].setEncrypt( encryptedFiles[i],
+                                      sourceFiles[i],
+                                      chunkSize,
+                                      false,
+                                      &(g[i]),
+                                      threadWorker::ENCRYPT_SIMPLE );
+
+            }
+
+            workerCompteteCounter = 0;
+
+            for( int i = 0 ; i < threadCount; i++ )
+            {
+                worker[i].start();
+            }
+
+        }
+
     }
     else if(ui->radioButton_gamma->isChecked())
     {
-        worker.setEncrypt( encryptedFile, sourceFile, &g, threadWorker::ENCRYPT_GAMMA);
-    }
 
-    worker.start();
+        worker[0].setEncrypt( encryptedFiles[0], sourceFiles[0], sourceFiles[0]->size(), true, &(g[0]), threadWorker::ENCRYPT_GAMMA);
+
+        worker[0].start();
+
+    }
 
     ui->pushButton_pause->setEnabled(true);
     ui->pushButton_cancel->setEnabled(true);
+    ui->progressBar_status->setEnabled(true);
 
 }
 
-/*
- * key - 12345, sync - 1,2,3,4,5,6,7,8
-"Data before crypt: 1 2 3 4 5 6 7 8 9 a b c d e f 10 "
-" Data after crypt: fc 69 2b 8b cd 8f e0 1a 60 f 56 1b a2 cf 4c 50 "
-"Data after decrypt: 1 2 3 4 5 6 7 8 9 a b c d e f 10 "
-*/
-        /*
-        vector<uint8_t> in_data = {0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x00,0xff,0xee,0xdd,0xcc,0xbb,0xaa,0x99,0x88};
-
-        vector<uint8_t> out_data(16,0);
-
-        vector<uint8_t> sync = {0x12,0x34,0x56,4,5,6,7,8};
-
-        QString str = "Data before crypt: ";
-
-        for(int i = 0; i < 16;i++)
-        {
-            str += QString::number( in_data[i], 16 ) + QString(" ");
-        }
-
-        qDebug() << str;
-
-        str = " Data after crypt: ";
-
-        out_data = g.gammaCryption(in_data,sync);
-
-        for(int i = 0; i < 16;i++)
-        {
-            str += QString::number( out_data[i], 16 ) + QString(" ");
-        }
-
-        qDebug() << str;
-
-        str = "Data after decrypt: ";
-
-        out_data = g.gammaCryption(out_data,sync);
-
-        for(int i = 0; i < 16;i++)
-        {
-            str += QString::number( out_data[i], 16 ) + QString(" ");
-        }
-
-        qDebug() << str;
-*/
-
 void MainWindow::on_pushButton_decrypt_clicked()
 {
-    if( !g.isKeySetted() )
+
+    disable_elements_before_crypt();
+
+    if( ! (g[0].isKeySetted()) )
     {
         QMessageBox msgBox;
         msgBox.setWindowTitle("Decryptor");
         msgBox.setText("Не задан ключ!");
         msgBox.exec();
+        enable_elements_after_crypt();
         return;
     }
 
 
     QString fileNamePath = ui->lineEdit_inputFile->text();
 
-    QFile *sourceFile = new QFile(fileNamePath);
+    sourceFiles[0] = new QFile(fileNamePath);
 
-    if( !sourceFile->open(QIODevice::ReadOnly | QIODevice::Unbuffered) )
+    if( !openFile(sourceFiles[0], QIODevice::ReadOnly, "Ошибка при открытии зашифрованного файла" ) )
     {
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("Decryptor");
-        msgBox.setText("Ошибка при открытии зашифрованного файла");
-        msgBox.exec();
-        sourceFile->close();
-        delete sourceFile;
+        delete sourceFiles[0];
+        enable_elements_after_crypt();
         return;
     }
 
-    if( (sourceFile->size() % 16 != 0) && ( ! ui->radioButton_gamma->isChecked() ) )
+    if( (sourceFiles[0]->size() % BLOCK_SIZE != 0) && ( ! ui->radioButton_gamma->isChecked() ) )
     {
         QMessageBox msgBox;
         msgBox.setWindowTitle("Decryptor");
-        msgBox.setText("Зашифрованный файл поврежден, его размер не кратен 16 байтам!");
+        msgBox.setText("Зашифрованный файл поврежден, его размер не кратен "+QString::number(BLOCK_SIZE)+" байтам!");
         msgBox.exec();
-        sourceFile->close();
-        delete sourceFile;
+        sourceFiles[0]->close();
+        delete sourceFiles[0];
+        enable_elements_after_crypt();
         return;
     }
 
-    QByteArray sourceFileData = sourceFile->read(16000);
+    QByteArray sourceFileData = sourceFiles[0]->read(16000);
 
     ui->textEdit_source->clear();
     ui->textEdit_source->appendPlainText( QString(sourceFileData) );
@@ -220,74 +228,40 @@ void MainWindow::on_pushButton_decrypt_clicked()
     ui->textEdit_result->clear();
     ui->textEdit_resultHEX->clear();
 
-    sourceFile->seek(0);
+    sourceFiles[0]->seek(0);
 
     fileNamePath.chop(6);
 
-    QFile* decryptedFile = new QFile (fileNamePath);
+    encryptedFiles[0] = new QFile(fileNamePath);
 
-    if( !decryptedFile->open(QIODevice::WriteOnly|QIODevice::Truncate) )
+    if( !openFile(encryptedFiles[0], QIODevice::WriteOnly|QIODevice::Truncate, "Ошибка при открытии файла для расшифровки") )
     {
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("Decryptor");
-        msgBox.setText("Ошибка при открытии файла для расшифровки");
-        msgBox.exec();
-        sourceFile->close();
-        decryptedFile->close();
-        delete sourceFile;
-        delete decryptedFile;
+        sourceFiles[0]->close();
+        delete sourceFiles[0];
+        delete encryptedFiles[0];
+        enable_elements_after_crypt();
         return;
     }
 
-    /*
-    QString str = "Дешифрование файла завершено!";
-
-    int spacesNum = ( ui->statusbar->size().width() - (str.length()/2) ) / 2;
-
-    QString str2;
-
-    if(spacesNum > 1 )
-    {
-
-        for( int i = 0 ; i < spacesNum; i++ )
-        {
-            str2 += " ";
-        }
-
-    }
-
-    str2 += str;
-
-    ui->statusbar->showMessage(str2, 10000);
-
-    QLabel* statusLabel = new QLabel("Дешифрование файла завершено!");
-    statusBar()->addWidget(statusLabel,1);
-    */
-
-    ui->pushButton_chooseFile->setEnabled(false);
-    ui->pushButton_decrypt->setEnabled(false);
-    ui->pushButton_encrypt->setEnabled(false);
-    ui->pushButton_generationKey->setEnabled(false);
-    ui->pushButton_setKey->setEnabled(false);
-    ui->lineEdit_key->setEnabled(false);
-    ui->progressBar_status->setEnabled(true);
-    ui->lineEdit_sync->setEnabled(false);
-
     if(ui->radioButton_change->isChecked())
     {
-        worker.setEncrypt( decryptedFile, sourceFile, &g, threadWorker::DECRYPT_SIMPLE );
+
+        worker[0].setEncrypt( encryptedFiles[0], sourceFiles[0], sourceFiles[0]->size(), true, &(g[0]), threadWorker::DECRYPT_SIMPLE );
+
+        worker[0].start();
+
     }
     else if(ui->radioButton_gamma->isChecked())
     {
-        worker.setEncrypt( decryptedFile, sourceFile, &g, threadWorker::DECRYPT_GAMMA );
-    }
 
-    worker.start();
+        worker[0].setEncrypt( encryptedFiles[0], sourceFiles[0], sourceFiles[0]->size(), true, &(g[0]), threadWorker::DECRYPT_GAMMA );
+
+        worker[0].start();
+
+    }
 
     ui->pushButton_pause->setEnabled(true);
     ui->pushButton_cancel->setEnabled(true);
-
-    // worker.quit();
 
 }
 
@@ -322,14 +296,22 @@ void MainWindow::on_pushButton_setKey_clicked()
        {
            ui->lineEdit_sync->clear();
            ui->lineEdit_sync->setStyleSheet("QLineEdit { background: rgb(255, 255, 255); selection-background-color: rgb(0, 0, 255); }");
-           g.clearSync();
+
+           for(int i = 0 ; i < MAX_THREAD_COUNT; i++)
+           {
+               g[i].clearSync();
+           }
+
        }
        ui->lineEdit_key->clear();
        ui->lineEdit_key->setStyleSheet("QLineEdit { background: rgb(255, 255, 255); selection-background-color: rgb(0, 0, 255); }");
        ui->pushButton_setKey->setText("Задать");
        ui->progressBar_status->setValue( 0 );
        ui->pushButton_generationKey->setEnabled(true);
-       g.clearKey();
+       for(int i = 0 ; i < MAX_THREAD_COUNT; i++)
+       {
+           g[i].clearKey();
+       }
    }
    else
    {
@@ -341,7 +323,10 @@ void MainWindow::on_pushButton_setKey_clicked()
            {
 
            }
-           g.setSync(ui->lineEdit_sync->text().toStdString().c_str());
+           for(int i = 0 ; i < MAX_THREAD_COUNT; i++)
+           {
+               g[i].setSync(ui->lineEdit_sync->text().toStdString().c_str());
+           }
        }
 
        ui->lineEdit_key->setStyleSheet("QLineEdit { background: rgb(0, 255, 255); selection-background-color: rgb(0, 0, 255); }");
@@ -351,7 +336,10 @@ void MainWindow::on_pushButton_setKey_clicked()
        {
 
        }
-       g.setKey( ui->lineEdit_key->text().toStdString().c_str() );
+       for(int i = 0 ; i < MAX_THREAD_COUNT; i++)
+       {
+           g[i].setKey( ui->lineEdit_key->text().toStdString().c_str() );
+       }
    }
 }
 
@@ -401,17 +389,77 @@ void MainWindow::on_pushButton_generationKey_clicked()
 void MainWindow::encryptShow(bool isEncrypt)
 {
 
-    ui->pushButton_chooseFile->setEnabled(true);
-    ui->pushButton_decrypt->setEnabled(true);
-    ui->pushButton_encrypt->setEnabled(true);
-    ui->pushButton_generationKey->setEnabled(true);
-    ui->pushButton_setKey->setEnabled(true);
-    ui->lineEdit_key->setEnabled(true);
-    ui->progressBar_status->setEnabled(false);
-    ui->lineEdit_sync->setEnabled(true);
+    int threadCount = ui->spinBox_threadCount->value();
 
+    if( threadCount > 1 )
+    {
+        workerCompteteCounter++;
+        if( workerCompteteCounter < ui->spinBox_threadCount->value() )
+        {
+            return;
+        }
+        else
+        {
+
+            sourceFiles[0]->close();
+            delete sourceFiles[0];
+            sourceFiles[0] = 0;
+
+            char* block = new char[8192];
+
+            encryptedFiles[0]->seek(encryptedFiles[0]->size());
+
+            // Сборка файлов обратно в один и закрытие исходных
+            for( int i = 1 ; i < threadCount; i++ )
+            {
+
+                sourceFiles[i]->close();
+                delete sourceFiles[i];
+                sourceFiles[i] = 0;
+
+                encryptedFiles[i]->seek(0);
+
+                int readedBytes = 0;
+
+                while( ( readedBytes = encryptedFiles[i]->read(block, 8192) ) > 0 )
+                {
+                    encryptedFiles[0]->write( block, readedBytes );
+                }
+
+                encryptedFiles[0]->flush();
+
+                encryptedFiles[i]->close();
+
+                encryptedFiles[i]->remove();
+
+                delete encryptedFiles[i];
+
+                encryptedFiles[i] = 0;
+
+            }
+
+            delete [] block;
+
+        }
+    }
+    else
+    {
+
+        sourceFiles[0]->close();
+        delete sourceFiles[0];
+        sourceFiles[0]    = 0;
+
+    }
+
+    encryptedFiles[0]->close();
+    delete encryptedFiles[0];
+    encryptedFiles[0] = 0;
+
+    ui->progressBar_status->setEnabled(false);
     ui->pushButton_pause->setEnabled(false);
     ui->pushButton_cancel->setEnabled(false);
+
+    enable_elements_after_crypt();
 
     QMessageBox msgBox;
 
@@ -446,12 +494,14 @@ void MainWindow::encryptShow(bool isEncrypt)
 
     QFile file(filenamePath);
 
-    if( !file.open(QIODevice::ReadOnly | QIODevice::Unbuffered) )
+    if( !openFile(&file, QIODevice::ReadOnly, "Не удалось открыть файл для показа содержимого во вкладке результат") )
     {
         return;
     }
 
     QByteArray sourceFileData = file.read(16000);
+
+    file.close();
 
     ui->textEdit_result->setText( QString::fromUtf8(sourceFileData) );
     ui->textEdit_resultHEX->setText(QString(sourceFileData.toHex()));
@@ -464,12 +514,18 @@ void MainWindow::on_pushButton_pause_clicked()
 
     if( ui->pushButton_pause->text() == "Пауза" )
     {
-        worker.pause();
+        for(int i = 0 ; i < MAX_THREAD_COUNT; i++)
+        {
+            worker[i].pause();
+        }
         ui->pushButton_pause->setText("Продолжить");
     }
     else
     {
-        worker.resume();
+        for(int i = 0 ; i < MAX_THREAD_COUNT; i++)
+        {
+            worker[i].resume();
+        }
         ui->pushButton_pause->setText("Пауза");
     }
 
@@ -480,21 +536,39 @@ void MainWindow::on_pushButton_cancel_clicked()
 
     // worker.quit();
     // worker.blockSignals(true);
-    worker.terminate();
-    worker.wait();
 
-    ui->pushButton_chooseFile->setEnabled(true);
-    ui->pushButton_decrypt->setEnabled(true);
-    ui->pushButton_encrypt->setEnabled(true);
-    ui->pushButton_generationKey->setEnabled(true);
-    ui->pushButton_setKey->setEnabled(true);
-    ui->lineEdit_key->setEnabled(true);
+    int threadCount = ui->spinBox_threadCount->value();
 
+    for(int i = 0 ; i < threadCount; i++)
+    {
+
+        worker[i].terminate();
+        worker[i].wait();
+
+        if( sourceFiles[i] != 0 )
+        {
+
+            sourceFiles[i]->close();
+
+            encryptedFiles[i]->close();
+
+            encryptedFiles[i]->remove();
+
+            delete encryptedFiles[i];
+            delete sourceFiles[i];
+
+            encryptedFiles[i] = 0;
+            sourceFiles[i] = 0;
+
+        }
+
+    }
+
+    ui->progressBar_status->setEnabled(false);
     ui->pushButton_pause->setEnabled(false);
     ui->pushButton_cancel->setEnabled(false);
 
-    ui->progressBar_status->setValue(0);
-    ui->progressBar_status->setEnabled(false);
+    enable_elements_after_crypt();
 
 }
 
@@ -506,7 +580,12 @@ void MainWindow::on_radioButton_change_clicked()
        ui->lineEdit_sync->clear();
        ui->lineEdit_sync->setEnabled(false);
        ui->label_sync->setEnabled(false);
-       g.clearSync();
+       ui->spinBox_threadCount->setEnabled(true);
+       ui->spinBox_threadCount->setValue(4);
+       for(int i = 0 ; i < MAX_THREAD_COUNT; i++)
+       {
+           g[i].clearSync();
+       }
     }
 }
 
@@ -516,6 +595,8 @@ void MainWindow::on_radioButton_gamma_clicked()
     {
         ui->lineEdit_sync->setEnabled(true);
         ui->label_sync->setEnabled(true);
+        ui->spinBox_threadCount->setValue(1);
+        ui->spinBox_threadCount->setEnabled(false);
     }
 }
 
@@ -551,5 +632,77 @@ void MainWindow::on_checkBox_hex_clicked(bool checked)
         }
         ui->lineEdit_key->clear();
     }
+}
+
+void MainWindow::enable_elements_after_crypt()
+{
+
+    ui->pushButton_chooseFile->setEnabled(true);
+    ui->lineEdit_inputFile->setEnabled(true);
+    ui->lineEdit_key->setEnabled(true);
+    ui->checkBox_hex->setEnabled(true);
+    ui->checkBox_hide->setEnabled(true);
+    ui->spinBox_keyLength->setEnabled(true);
+    ui->pushButton_generationKey->setEnabled(true);
+    ui->pushButton_setKey->setEnabled(true);
+    ui->pushButton_decrypt->setEnabled(true);
+    ui->pushButton_encrypt->setEnabled(true);
+    ui->spinBox_threadCount->setEnabled(true);
+    ui->radioButton_change->setEnabled(true);
+    ui->radioButton_gamma->setEnabled(true);
+
+    if( ui->radioButton_gamma->isChecked() )
+    {
+        ui->lineEdit_sync->setEnabled(true);
+    }
+
+}
+
+void MainWindow::disable_elements_before_crypt()
+{
+
+
+    ui->pushButton_chooseFile->setEnabled(false);
+    ui->lineEdit_inputFile->setEnabled(false);
+    ui->lineEdit_key->setEnabled(false);
+    ui->checkBox_hex->setEnabled(false);
+    ui->checkBox_hide->setEnabled(false);
+    ui->spinBox_keyLength->setEnabled(false);
+    ui->pushButton_generationKey->setEnabled(false);
+    ui->pushButton_setKey->setEnabled(false);
+    ui->pushButton_decrypt->setEnabled(false);
+    ui->pushButton_encrypt->setEnabled(false);
+    ui->spinBox_threadCount->setEnabled(false);
+    ui->lineEdit_sync->setEnabled(false);
+    ui->radioButton_change->setEnabled(false);
+    ui->radioButton_gamma->setEnabled(false);
+
+}
+
+bool MainWindow::openFile(QFile* file, QFile::OpenMode flags ,  QString errorMessage )
+{
+
+    if( file == 0 )
+    {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Decryptor");
+        msgBox.setText("Не удалось выделить память под файл!");
+        msgBox.exec();
+        return false;
+    }
+
+    if(! file->open(flags) )
+    {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Decryptor");
+        msgBox.setText(errorMessage);
+        msgBox.exec();
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+
 }
 

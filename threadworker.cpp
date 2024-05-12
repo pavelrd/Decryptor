@@ -6,40 +6,62 @@
 void threadWorker::run()
 {
 
+    // qDebug() << isHeaderPresent << " " << sourceFileSize;
+
     if( cryptMode == ENCRYPT_SIMPLE )
     {
 
-        uint8_t block[16] = {0};
-        uint8_t encryptedBlock[16] = {0};
+        uint8_t block[blockSize] = {0};
+        uint8_t encryptedBlock[blockSize] = {0};
 
-        // ------- Запись длины файла в начало первого блока, который будет зашифрован
+        qint64 currentReadedBytes = 0;
 
-        uint32_t value = sourceFile->size();
+        qint64 bytesReadTotal = 0;
 
-        block[0] = value & 0xFF;
+        bytesReadTotal += currentReadedBytes;
 
-        block[1] = ( value >> 8 ) & 0xFF;
+        if(isHeaderPresent)
+        {
+            // ------- Запись длины файла в начало первого блока, который будет зашифрован
 
-        block[2] = ( value >> 16 ) & 0xFF;
+            uint32_t value = sourceFile->size();
 
-        block[3] = ( value >> 24 ) & 0xFF;
+            block[0] = value & 0xFF;
 
-        // -------
+            block[1] = ( value >> 8 ) & 0xFF;
 
-        emit progressChanged(0);
+            block[2] = ( value >> 16 ) & 0xFF;
+
+            block[3] = ( value >> 24 ) & 0xFF;
+
+            // -------
+
+            currentReadedBytes   += 4;
+
+            // Начинаем запись файла с 5 байта блока, так как в первые 4 байта записан размер файла
+
+            currentReadedBytes += sourceFile->read( (char*) block + 4, blockSize - 4 );
+
+            bytesReadTotal = currentReadedBytes - 4;
+
+        }
+        else
+        {
+
+            currentReadedBytes += sourceFile->read( (char*) block, blockSize );
+
+            bytesReadTotal = currentReadedBytes;
+
+        }
 
         int progressValue = 0;
 
-        // Начинаем запись файла с 5 байта блока, так как в первые 4 байта записан размер файла
-
-        int currentReadedBytes = 4;
-
-        currentReadedBytes += sourceFile->read( (char*)block+4, 12 );
+        emit progressChanged(0);
 
         do
         {
 
-            if( currentReadedBytes >= 16 )
+            if( currentReadedBytes >= blockSize )
             {
 
                 sync.lock();
@@ -53,9 +75,9 @@ void threadWorker::run()
 
                 gost12_15_Worker->encrypt(encryptedBlock, block);
 
-                encryptedFile->write((const char*)encryptedBlock, 16);
+                encryptedFile->write((const char*)encryptedBlock, blockSize);
 
-                int currentProgressValue = ( (int) ( ((double)sourceFile->pos()) / sourceFile->size() * 100 ) );
+                int currentProgressValue = ( (int) ( ((double)bytesReadTotal) / sourceFileSize * 100 ) );
 
                 if( progressValue < currentProgressValue )
                 {
@@ -71,22 +93,26 @@ void threadWorker::run()
 
                 // Дополнение блока нулями
 
-                for( int i = currentReadedBytes; i < 16; i++)
+                for( int i = currentReadedBytes; i < blockSize; i++)
                 {
                     block[i] = 0x00;
                 }
 
                 gost12_15_Worker->encrypt(encryptedBlock, block);
 
-                encryptedFile->write((const char*)encryptedBlock, 16);
+                encryptedFile->write((const char*)encryptedBlock, blockSize);
 
                 break;
 
             }
 
-        } while( (currentReadedBytes = sourceFile->read( (char*)block, 16 ) ) > 0 );
+            currentReadedBytes = sourceFile->read( (char*)block, sourceFileSize - bytesReadTotal >= blockSize ? blockSize : sourceFileSize - bytesReadTotal );
 
+            bytesReadTotal += currentReadedBytes;
 
+        } while( currentReadedBytes > 0 );
+
+        encryptedFile->flush();
 
         emit cryptCompteted(1);
 
@@ -94,17 +120,18 @@ void threadWorker::run()
     else if( cryptMode == DECRYPT_SIMPLE )
     {
 
-        uint8_t block[16] = {0};
+        uint8_t block[blockSize] = {0};
 
         uint32_t fileSize = 0;
         uint32_t fileCounter = 0;
 
         int currentReadedBytes = 0;
         int progressValue = 0;
+        uint32_t bytesReadTotal = 0;
 
         // Начинаем запись файла с 5 байта блока, так как в первые 4 байта записан размер файла
 
-        while( ( currentReadedBytes = sourceFile->read( (char*)block, 16 ) ) > 0 )
+        while( 1 )
         {
 
             sync.lock();
@@ -114,11 +141,19 @@ void threadWorker::run()
             }
             sync.unlock();
 
-            uint8_t decryptedBlock[16];
+            currentReadedBytes = sourceFile->read( (char*)block, 16 );
+            bytesReadTotal    += currentReadedBytes;
+
+            if( currentReadedBytes <= 0 )
+            {
+                break;
+            }
+
+            uint8_t decryptedBlock[blockSize];
 
             gost12_15_Worker->decrypt(decryptedBlock, block);
 
-            if( sourceFile->pos() <= 16 )
+            if( isHeaderPresent && ( bytesReadTotal <= blockSize ) )
             {
 
                 // Первый блок, в нем первые 4 байта это длина файла, запоминаем эту длин
@@ -128,15 +163,15 @@ void threadWorker::run()
                 fileSize |= ( ( (uint32_t) decryptedBlock[2] ) << 16 );
                 fileSize |= ( ( (uint32_t) decryptedBlock[3] ) << 24 );
 
-                if( fileSize < 12 ) // Файл полностью помещается в первом блоке. Чтобы это условие было выполнено файл должен быть размера 16 - 4 = 12
+                if( fileSize < (blockSize - 4) ) // Файл полностью помещается в первом блоке.
                 {
                     encryptedFile->write( (const char*) decryptedBlock + 4, fileSize );
                     break;
                 }
                 else // Файл не помещается в одном блоке, запись уже считанной на текущий момент части файла.
                 {
-                   encryptedFile->write( (const char*) decryptedBlock + 4, 12 );
-                   fileCounter += 12;
+                   encryptedFile->write( (const char*) decryptedBlock + 4, blockSize - 4 );
+                   fileCounter += blockSize - 4;
                 }
 
             }
@@ -145,10 +180,10 @@ void threadWorker::run()
 
                 // Второй и последующий блоки
 
-                if( (fileCounter + 16) < fileSize )
+                if( (fileCounter + blockSize) < fileSize )
                 {
-                    encryptedFile->write((const char*)decryptedBlock, 16);
-                    fileCounter += 16;
+                    encryptedFile->write((const char*)decryptedBlock, blockSize);
+                    fileCounter += blockSize;
                 }
                 else
                 {
@@ -157,7 +192,7 @@ void threadWorker::run()
 
             }
 
-            int currentProgressValue = ( (int) ( ((double) sourceFile->pos()) / sourceFile->size() * 100 ) );
+            int currentProgressValue = ( (int) ( ((double) sourceFile->pos()) / sourceFileSize * 100 ) );
 
             if( progressValue < currentProgressValue )
             {
@@ -168,16 +203,14 @@ void threadWorker::run()
 
         }
 
-
-
         emit cryptCompteted(0);
 
     }
     else if( ( cryptMode == ENCRYPT_GAMMA) || ( cryptMode == DECRYPT_GAMMA ) )
     {
 
-        uint8_t in_buffer[16];
-        uint8_t out_buffer[16];
+        uint8_t in_buffer[blockSize];
+        uint8_t out_buffer[blockSize];
 
         int progressValue = 0;
 
@@ -186,7 +219,7 @@ void threadWorker::run()
         while( 1 )
         {
 
-            int readedBytes = sourceFile->read( (char*) in_buffer, 16 );
+            int readedBytes = sourceFile->read( (char*) in_buffer, blockSize );
 
             if( readedBytes == 0 )
             {
@@ -220,22 +253,17 @@ void threadWorker::run()
 
     emit progressChanged( 100 );
 
-    sourceFile->close();
-
-    delete sourceFile;
-
-    encryptedFile->close();
-
-    delete encryptedFile;
-
 }
 
-void threadWorker::setEncrypt( QFile* _encryptedFile, QFile* _sourceFile, gost12_15 *_gost12_15_Worker, cryptMode_t _cryptMode )
+void threadWorker::setEncrypt( QFile* _encryptedFile, QFile* _sourceFile, quint64 _sourceFileSize, bool _isHeaderPresent, gost12_15 *_gost12_15_Worker, cryptMode_t _cryptMode )
 {
-    encryptedFile = _encryptedFile;
-    sourceFile    = _sourceFile;
+    encryptedFile    = _encryptedFile;
+    sourceFile       = _sourceFile;
+    sourceFileSize   = _sourceFileSize;
     gost12_15_Worker = _gost12_15_Worker;
-    cryptMode = _cryptMode;
+    cryptMode        = _cryptMode;
+    isHeaderPresent  = _isHeaderPresent;
+
 }
 
 void threadWorker::resume()

@@ -19,19 +19,20 @@ public:
     ~threadWorker()
     {
     }
-    void setEncrypt(QFile* _encryptedFile, QFile* _sourceFile, gost12_15 *_gost12_15_Worker , cryptMode_t _cryptMode );
+    void setEncrypt( QFile* _encryptedFile, QFile* _sourceFile, quint64 _sourceFileSize, bool _isHeaderPresent, gost12_15 *_gost12_15_Worker, cryptMode_t _cryptMode );
     void resume();
     void pause();
 private:
     QFile* encryptedFile = 0;
     QFile* sourceFile = 0;
+    quint64 sourceFileSize = 0;
     gost12_15 *gost12_15_Worker = 0;
     cryptMode_t cryptMode;
-
+    bool isHeaderPresent;
     QMutex sync;
     QWaitCondition pauseCond;
     bool pauseFlag = false;
-
+    const quint32 blockSize = 16;
 signals:
     void progressChanged(int value);
     void cryptCompteted(bool);
