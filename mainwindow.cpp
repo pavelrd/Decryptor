@@ -246,9 +246,66 @@ void MainWindow::on_pushButton_decrypt_clicked()
     if(ui->radioButton_change->isChecked())
     {
 
-        worker[0].setEncrypt( encryptedFiles[0], sourceFiles[0], sourceFiles[0]->size(), true, &(g[0]), threadWorker::DECRYPT_SIMPLE );
-
         worker[0].start();
+
+        int threadCount = ui->spinBox_threadCount->value();
+
+        if( ( sourceFiles[0]->size() < 65535 ) || ( threadCount <= 1 ) )
+        {
+
+            worker[0].setEncrypt( encryptedFiles[0], sourceFiles[0], sourceFiles[0]->size(), true, &(g[0]), threadWorker::DECRYPT_SIMPLE );
+
+            worker[0].start();
+
+        }
+        // ----------------------------------------
+        else
+        {
+
+            qint64 fullSize = sourceFiles[0]->size();
+
+            quint64 partSize = ( ( fullSize / BLOCK_SIZE ) / threadCount ) * BLOCK_SIZE; // 12345 / 16 / 4 = 192 * 16 = 3072
+
+            worker[0].setEncrypt( encryptedFiles[0], sourceFiles[0], partSize, true, &(g[0]), threadWorker::DECRYPT_SIMPLE );
+
+            for( int i = 1 ; ( i < threadCount ) && ( i < MAX_THREAD_COUNT ); i++ )
+            {
+
+                sourceFiles[i]    = new QFile(fileNamePath);
+                encryptedFiles[i] = new QFile(fileNamePath + QString(".crypt") + QString::number(i) );
+
+                if( !openFile(sourceFiles[i], QIODevice::ReadOnly, "Ошибка при повторном открытии исходного файла! Повторное открытие файла нужно для многопоточного шифрования.") )
+                {
+                    return;
+                }
+
+                if( !openFile(encryptedFiles[i], QIODevice::ReadWrite|QIODevice::Truncate, "Ошибка при открытии одного из временных выходных файлов!") )
+                {
+                    return;
+                }
+
+                volatile uint32_t chunkSize = ( i < (threadCount - 1) ) ? partSize : fullSize - ( ( partSize * i ));
+
+                sourceFiles[i]->seek( (partSize * i)  );
+
+                worker[i].setEncrypt( encryptedFiles[i],
+                                      sourceFiles[i],
+                                      chunkSize,
+                                      false,
+                                      &(g[i]),
+                                      threadWorker::ENCRYPT_SIMPLE );
+
+            }
+
+            workerCompteteCounter = 0;
+
+            for( int i = 0 ; i < threadCount; i++ )
+            {
+                worker[i].start();
+            }
+
+        }
+        // ---------------------------
 
     }
     else if(ui->radioButton_gamma->isChecked())

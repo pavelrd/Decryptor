@@ -33,6 +33,8 @@ private:
     QWaitCondition pauseCond;
     bool pauseFlag = false;
     const quint32 blockSize = 16;
+    static QMutex fileLengthForDecryptSync;
+    static quint32 fileLengthForDecrypt;
 signals:
     void progressChanged(int value);
     void cryptCompteted(bool);

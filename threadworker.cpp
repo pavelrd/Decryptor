@@ -120,14 +120,23 @@ void threadWorker::run()
     else if( cryptMode == DECRYPT_SIMPLE )
     {
 
-        uint8_t block[blockSize] = {0};
+        if( !isHeaderPresent )
+        {
+            while(1)
+            {
+                QThread::msleep(100);
+                fileLengthForDecryptSync.lock();
+                if( 0 != threadWorker::fileLengthForDecrypt )
+                {
+                    break;
+                    fileLengthForDecryptSync.unlock();
+                }
+                fileLengthForDecryptSync.unlock();
+            }
+        }
 
-        uint32_t fileSize = 0;
-        uint32_t fileCounter = 0;
-
-        int currentReadedBytes = 0;
-        int progressValue = 0;
-        uint32_t bytesReadTotal = 0;
+        int  progressValue = 0;
+        bool isHeaderNonProccessed = true;
 
         // Начинаем запись файла с 5 байта блока, так как в первые 4 байта записан размер файла
 
@@ -141,8 +150,11 @@ void threadWorker::run()
             }
             sync.unlock();
 
+            uint8_t block[blockSize];
+
+            int currentReadedBytes = 0;
+
             currentReadedBytes = sourceFile->read( (char*)block, 16 );
-            bytesReadTotal    += currentReadedBytes;
 
             if( currentReadedBytes <= 0 )
             {
@@ -153,10 +165,14 @@ void threadWorker::run()
 
             gost12_15_Worker->decrypt(decryptedBlock, block);
 
-            if( isHeaderPresent && ( bytesReadTotal <= blockSize ) )
+            if( isHeaderPresent && isHeaderNonProccessed )
             {
 
-                // Первый блок, в нем первые 4 байта это длина файла, запоминаем эту длин
+                isHeaderNonProccessed = false;
+
+                uint32_t fileSize = 0;
+
+                // Первый блок, в нем первые 4 байта это длина файла, запоминаем эту длину
 
                 fileSize |= decryptedBlock[0];
                 fileSize |= ( ( (uint32_t) decryptedBlock[1] ) << 8 );
@@ -171,8 +187,13 @@ void threadWorker::run()
                 else // Файл не помещается в одном блоке, запись уже считанной на текущий момент части файла.
                 {
                    encryptedFile->write( (const char*) decryptedBlock + 4, blockSize - 4 );
-                   fileCounter += blockSize - 4;
                 }
+
+                fileLengthForDecryptSync.lock();
+
+                fileLengthForDecrypt = fileSize;
+
+                fileLengthForDecryptSync.unlock();
 
             }
             else
@@ -180,14 +201,14 @@ void threadWorker::run()
 
                 // Второй и последующий блоки
 
-                if( (fileCounter + blockSize) < fileSize )
+                if( sourceFile->pos() < (fileLengthForDecrypt+4) ) // (fileCounter + blockSize)
                 {
                     encryptedFile->write((const char*)decryptedBlock, blockSize);
-                    fileCounter += blockSize;
                 }
                 else
                 {
-                    encryptedFile->write((const char*)decryptedBlock, fileSize - fileCounter);
+                    // Дошли до конца файла
+                    encryptedFile->write((const char*)decryptedBlock, blockSize - ( sourceFile->pos() - 4 - fileLengthForDecrypt ) );
                 }
 
             }
@@ -280,3 +301,6 @@ void threadWorker::pause()
     pauseFlag = true;
     sync.unlock();
 }
+
+quint32 threadWorker::fileLengthForDecrypt = 0;
+QMutex threadWorker::fileLengthForDecryptSync;
