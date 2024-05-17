@@ -271,8 +271,8 @@ void MainWindow::on_pushButton_decrypt_clicked()
             for( int i = 1 ; ( i < threadCount ) && ( i < MAX_THREAD_COUNT ); i++ )
             {
 
-                sourceFiles[i]    = new QFile(fileNamePath);
-                encryptedFiles[i] = new QFile(fileNamePath + QString(".crypt") + QString::number(i) );
+                sourceFiles[i]    = new QFile(fileNamePath + ".crypt");
+                encryptedFiles[i] = new QFile(fileNamePath + QString(".decrypt") + QString::number(i) );
 
                 if( !openFile(sourceFiles[i], QIODevice::ReadOnly, "Ошибка при повторном открытии исходного файла! Повторное открытие файла нужно для многопоточного шифрования.") )
                 {
@@ -293,7 +293,7 @@ void MainWindow::on_pushButton_decrypt_clicked()
                                       chunkSize,
                                       false,
                                       &(g[i]),
-                                      threadWorker::ENCRYPT_SIMPLE );
+                                      threadWorker::DECRYPT_SIMPLE );
 
             }
 

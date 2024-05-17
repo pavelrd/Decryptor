@@ -6,8 +6,6 @@
 void threadWorker::run()
 {
 
-    // qDebug() << isHeaderPresent << " " << sourceFileSize;
-
     if( cryptMode == ENCRYPT_SIMPLE )
     {
 
@@ -124,21 +122,26 @@ void threadWorker::run()
         {
             while(1)
             {
-                QThread::msleep(100);
+                QThread::msleep(50);
                 fileLengthForDecryptSync.lock();
                 if( 0 != threadWorker::fileLengthForDecrypt )
                 {
-                    break;
                     fileLengthForDecryptSync.unlock();
+                    break;
                 }
                 fileLengthForDecryptSync.unlock();
             }
         }
 
+        qDebug() << "Decrypt " << isHeaderPresent << " --- " << sourceFile->pos() << " --- " << sourceFile->size() << " <--- " << sourceFileSize;
+
+
         int  progressValue = 0;
         bool isHeaderNonProccessed = true;
 
         // Начинаем запись файла с 5 байта блока, так как в первые 4 байта записан размер файла
+
+        qint64 bytesReadTotal = 0;
 
         while( 1 )
         {
@@ -154,7 +157,9 @@ void threadWorker::run()
 
             int currentReadedBytes = 0;
 
-            currentReadedBytes = sourceFile->read( (char*)block, 16 );
+            currentReadedBytes = sourceFile->read( (char*)block, sourceFileSize - bytesReadTotal >= blockSize ? blockSize : sourceFileSize - bytesReadTotal );
+
+            bytesReadTotal += currentReadedBytes;
 
             if( currentReadedBytes <= 0 )
             {
