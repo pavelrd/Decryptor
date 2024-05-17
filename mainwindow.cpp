@@ -130,8 +130,6 @@ void MainWindow::on_pushButton_encrypt_clicked()
 
             encryptedFiles[0]->seek(0);
 
-            // encryptedFiles[0]->resize( ( fullSize % 16) == 0 ? fullSize : (( fullSize / 16 ) + 1) * 16 );
-
             worker[0].setEncrypt( encryptedFiles[0], sourceFiles[0], partSize - CRYPT_FILE_HEADER_LENGTH, true, &(g[0]), threadWorker::ENCRYPT_SIMPLE );
 
             for( int i = 1 ; ( i < threadCount ) && ( i < MAX_THREAD_COUNT ); i++ )
