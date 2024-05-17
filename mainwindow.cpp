@@ -97,7 +97,9 @@ void MainWindow::on_pushButton_encrypt_clicked()
 
     encryptedFiles[0] = new QFile(fileNamePath+".crypt");
 
-    if( !openFile(encryptedFiles[0], QIODevice::WriteOnly|QIODevice::Truncate, "Ошибка при открытии файла для зашифрованной информации!") )
+    encryptedFiles[0]->resize(0);
+
+    if( !openFile(encryptedFiles[0], QIODevice::WriteOnly, "Ошибка при открытии файла для зашифрованной информации!") )
     {
         sourceFiles[0]->close();
         delete sourceFiles[0];
@@ -126,20 +128,24 @@ void MainWindow::on_pushButton_encrypt_clicked()
 
             quint64 partSize = ( ( fullSize / BLOCK_SIZE ) / threadCount ) * BLOCK_SIZE; // 12345 / 16 / 4 = 192 * 16 = 3072
 
+            encryptedFiles[0]->seek(0);
+
+            // encryptedFiles[0]->resize( ( fullSize % 16) == 0 ? fullSize : (( fullSize / 16 ) + 1) * 16 );
+
             worker[0].setEncrypt( encryptedFiles[0], sourceFiles[0], partSize - CRYPT_FILE_HEADER_LENGTH, true, &(g[0]), threadWorker::ENCRYPT_SIMPLE );
 
             for( int i = 1 ; ( i < threadCount ) && ( i < MAX_THREAD_COUNT ); i++ )
             {
 
                 sourceFiles[i]    = new QFile(fileNamePath);
-                encryptedFiles[i] = new QFile(fileNamePath + QString(".crypt") + QString::number(i) );
+                encryptedFiles[i] = new QFile(fileNamePath + QString(".crypt"));
 
                 if( !openFile(sourceFiles[i], QIODevice::ReadOnly, "Ошибка при повторном открытии исходного файла! Повторное открытие файла нужно для многопоточного шифрования.") )
                 {
                     return;
                 }
 
-                if( !openFile(encryptedFiles[i], QIODevice::ReadWrite|QIODevice::Truncate, "Ошибка при открытии одного из временных выходных файлов!") )
+                if( !openFile(encryptedFiles[i], QIODevice::WriteOnly, "Ошибка при открытии одного из временных выходных файлов!") )
                 {
                     return;
                 }
@@ -147,6 +153,8 @@ void MainWindow::on_pushButton_encrypt_clicked()
                 volatile uint32_t chunkSize = ( i < (threadCount - 1) ) ? partSize : fullSize - ( ( partSize * i ) - CRYPT_FILE_HEADER_LENGTH);
 
                 sourceFiles[i]->seek( (partSize * i) - CRYPT_FILE_HEADER_LENGTH );
+
+                encryptedFiles[i]->seek( partSize * i );
 
                 worker[i].setEncrypt( encryptedFiles[i],
                                       sourceFiles[i],
@@ -238,7 +246,7 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
     encryptedFiles[0] = new QFile(fileNamePath);
 
-    if( !openFile(encryptedFiles[0], QIODevice::WriteOnly|QIODevice::Truncate, "Ошибка при открытии файла для расшифровки") )
+    if( !openFile(encryptedFiles[0], QIODevice::WriteOnly, "Ошибка при открытии файла для расшифровки") )
     {
         sourceFiles[0]->close();
         delete sourceFiles[0];
@@ -246,6 +254,8 @@ void MainWindow::on_pushButton_decrypt_clicked()
         enable_elements_after_crypt();
         return;
     }
+
+    encryptedFiles[0]->resize(0);
 
     if(ui->radioButton_change->isChecked())
     {
@@ -256,6 +266,8 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
         if( ( sourceFiles[0]->size() < 65535 ) || ( threadCount <= 1 ) )
         {
+
+            encryptedFiles[0]->seek(0);
 
             worker[0].setEncrypt( encryptedFiles[0], sourceFiles[0], sourceFiles[0]->size(), true, &(g[0]), threadWorker::DECRYPT_SIMPLE );
 
@@ -270,13 +282,15 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
             quint64 partSize = ( ( fullSize / BLOCK_SIZE ) / threadCount ) * BLOCK_SIZE; // 12345 / 16 / 4 = 192 * 16 = 3072
 
+            encryptedFiles[0]->seek(0);
+
             worker[0].setEncrypt( encryptedFiles[0], sourceFiles[0], partSize, true, &(g[0]), threadWorker::DECRYPT_SIMPLE );
 
             for( int i = 1 ; ( i < threadCount ) && ( i < MAX_THREAD_COUNT ); i++ )
             {
 
                 sourceFiles[i]    = new QFile(fileNamePath + ".crypt");
-                encryptedFiles[i] = new QFile(fileNamePath + QString(".decrypt") + QString::number(i) );
+                encryptedFiles[i] = new QFile(fileNamePath);
 
                 if( !openFile(sourceFiles[i], QIODevice::ReadOnly, "Ошибка при повторном открытии исходного файла! Повторное открытие файла нужно для многопоточного шифрования.") )
                 {
@@ -290,7 +304,9 @@ void MainWindow::on_pushButton_decrypt_clicked()
 
                 volatile uint32_t chunkSize = ( i < (threadCount - 1) ) ? partSize : fullSize - ( ( partSize * i ));
 
-                sourceFiles[i]->seek( (partSize * i)  );
+                sourceFiles[i]->seek( partSize * i );
+
+                encryptedFiles[i]->seek( ( partSize * i ) - 4 );
 
                 worker[i].setEncrypt( encryptedFiles[i],
                                       sourceFiles[i],
@@ -462,59 +478,35 @@ void MainWindow::encryptShow(bool isEncrypt)
         else
         {
 
-            sourceFiles[0]->close();
-            delete sourceFiles[0];
-            sourceFiles[0] = 0;
-
-            char* block = new char[8192];
-
-            encryptedFiles[0]->seek(encryptedFiles[0]->size());
-
             // Сборка файлов обратно в один и закрытие исходных
-            for( int i = 1 ; i < threadCount; i++ )
+            for( int i = 0 ; i < threadCount; i++ )
             {
 
                 sourceFiles[i]->close();
-                delete sourceFiles[i];
-                sourceFiles[i] = 0;
-
-                encryptedFiles[i]->seek(0);
-
-                int readedBytes = 0;
-
-                while( ( readedBytes = encryptedFiles[i]->read(block, 8192) ) > 0 )
-                {
-                    encryptedFiles[0]->write( block, readedBytes );
-                }
-
-                encryptedFiles[0]->flush();
-
                 encryptedFiles[i]->close();
 
-                encryptedFiles[i]->remove();
-
                 delete encryptedFiles[i];
+                delete sourceFiles[i];
 
+                sourceFiles[i] = 0;
                 encryptedFiles[i] = 0;
 
             }
-
-            delete [] block;
-
         }
     }
     else
     {
 
         sourceFiles[0]->close();
+        encryptedFiles[0]->close();
+
+        delete encryptedFiles[0];
         delete sourceFiles[0];
+
         sourceFiles[0]    = 0;
+        encryptedFiles[0] = 0;
 
     }
-
-    encryptedFiles[0]->close();
-    delete encryptedFiles[0];
-    encryptedFiles[0] = 0;
 
     ui->progressBar_status->setEnabled(false);
     ui->pushButton_pause->setEnabled(false);

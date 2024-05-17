@@ -133,9 +133,6 @@ void threadWorker::run()
             }
         }
 
-        qDebug() << "Decrypt " << isHeaderPresent << " --- " << sourceFile->pos() << " --- " << sourceFile->size() << " <--- " << sourceFileSize;
-
-
         int  progressValue = 0;
         bool isHeaderNonProccessed = true;
 
