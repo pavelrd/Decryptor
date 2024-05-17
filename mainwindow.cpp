@@ -27,6 +27,10 @@ MainWindow::MainWindow(QWidget *parent)
     srand(time(NULL));
     ui->setupUi(this);
 
+    int idealThreads = QThread::idealThreadCount();
+
+    ui->spinBox_threadCount->setValue( idealThreads > 16 ? 16 : idealThreads  );
+
     for(int i = 0 ; i < MAX_THREAD_COUNT; i++)
     {
         connect(&worker[i], SIGNAL(progressChanged(int)), ui->progressBar_status, SLOT(setValue(int)));
