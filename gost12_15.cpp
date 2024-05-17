@@ -2,6 +2,9 @@
 
 #include "gost12_15.h"
 
+//     lg15_encryptBlocks(roundKeys, buffer, 1);
+//     lg15_decryptBlocks(roundKeys, buffer, 1);
+//     lg15_scheduleDecryptionRoundKeys(roundKeys, secret);
 
 /**
 * \brief Функция умножения чисел в конечном поле над неприводимым полиномом.

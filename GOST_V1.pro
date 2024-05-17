@@ -22,6 +22,8 @@ QMAKE_CXXFLAGS_RELEASE += -Werror=switch
 
 QMAKE_LFLAGS_RELEASE += -static -static-libgcc -static-libstdc++
 
+INCLUDEPATH += libgost15
+
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
@@ -32,12 +34,23 @@ CONFIG += c++17
 
 SOURCES += \
     gost12_15.cpp \
+    libgost15/src/data.c \
+    libgost15/src/sse2.c \
     main.cpp \
     mainwindow.cpp \
     threadworker.cpp
 
 HEADERS += \
     gost12_15.h \
+    libgost15/libgost15/internals/alignas.h \
+    libgost15/libgost15/internals/compiler.h \
+    libgost15/libgost15/internals/data.h \
+    libgost15/libgost15/internals/inline.h \
+    libgost15/libgost15/internals/language.h \
+    libgost15/libgost15/internals/may_alias.h \
+    libgost15/libgost15/internals/restrict.h \
+    libgost15/libgost15/internals/unmangled.h \
+    libgost15/libgost15/libgost15.h \
     mainwindow.h \
     threadworker.h
 
