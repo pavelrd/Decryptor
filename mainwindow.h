@@ -43,6 +43,8 @@ private slots:
 
     void on_checkBox_hex_clicked(bool checked);
 
+    void on_checkBox_libgost15_stateChanged(int arg1);
+
 private:
     Ui::MainWindow *ui;
     int workerCompteteCounter = 0;

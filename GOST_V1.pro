@@ -34,8 +34,8 @@ CONFIG += c++17
 
 SOURCES += \
     gost12_15.cpp \
-    libgost15/src/data.c \
-    libgost15/src/sse2.c \
+    libgost15/src/data.cpp \
+    libgost15/src/sse2.cpp \
     main.cpp \
     mainwindow.cpp \
     threadworker.cpp

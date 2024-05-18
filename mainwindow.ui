@@ -157,6 +157,19 @@
                    </spacer>
                   </item>
                   <item>
+                   <widget class="QCheckBox" name="checkBox_libgost15">
+                    <property name="toolTip">
+                     <string></string>
+                    </property>
+                    <property name="statusTip">
+                     <string/>
+                    </property>
+                    <property name="text">
+                     <string>llibgost15</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
                    <layout class="QHBoxLayout" name="horizontalLayout_8">
                     <item>
                      <widget class="QLabel" name="label_4">

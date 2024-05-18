@@ -33,6 +33,8 @@ public:
     void gammaCryptionStart();
     void gammaCryption(uint8_t *out_data, uint8_t *in_data, uint32_t size);
 
+    void setLibgost15(bool state);
+
 private:
 
     void LSXEncryptData( uint8_t* data );
@@ -78,12 +80,10 @@ private:
     static const int blockSize;
     static const int imitoLen;
 
-
-
     bool keySetted = false;
     bool syncSetted = false;
 
-
+    bool isLibgost15Enabled = false;
 
     static const uint8_t generatingPolynom; //Полином x ^ 8 + x ^ 7 + x ^ 6 + x + 1
 

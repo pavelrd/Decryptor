@@ -1,10 +1,7 @@
 #include <cstring>
 
 #include "gost12_15.h"
-
-//     lg15_encryptBlocks(roundKeys, buffer, 1);
-//     lg15_decryptBlocks(roundKeys, buffer, 1);
-//     lg15_scheduleDecryptionRoundKeys(roundKeys, secret);
+#include "libgost15/libgost15.h"
 
 /**
 * \brief Функция умножения чисел в конечном поле над неприводимым полиномом.
@@ -748,12 +745,25 @@ void gost12_15::encrypt(uint8_t* encryptedBlock, uint8_t* block)
         return;
     }
 
-    for (int i = 0; i < 9; i++)
+    if( !isLibgost15Enabled )
     {
-        LSXTransformation( block, roundKeys[i] );
-    }
 
-    XTransformation( encryptedBlock, block, roundKeys[9] );
+        for (int i = 0; i < 9; i++)
+        {
+            LSXTransformation( block, roundKeys[i] );
+        }
+
+        XTransformation( encryptedBlock, block, roundKeys[9] );
+
+    }
+    else
+    {
+
+        memcpy(encryptedBlock, block, 16 );
+
+        lg15_encryptBlocks( (uint8_t*)&(roundKeys[0][0]), encryptedBlock, 1 );
+
+    }
 
 }
 
@@ -765,12 +775,24 @@ void gost12_15::decrypt(uint8_t* block, uint8_t* encryptedBlock)
         return;
     }
 
-    for (int i = 9; i > 0; i--)
+    if( !isLibgost15Enabled )
     {
-        inverseLSXTransformation(encryptedBlock, roundKeys[i]);
-    }
 
-    XTransformation(block, encryptedBlock, roundKeys[0]);
+        for (int i = 9; i > 0; i--)
+        {
+            inverseLSXTransformation(encryptedBlock, roundKeys[i]);
+        }
+
+        XTransformation(block, encryptedBlock, roundKeys[0]);
+    }
+    else
+    {
+
+        memcpy( block, encryptedBlock, 16 );
+
+        lg15_decryptBlocks( (uint8_t*)&(roundKeys[0][0]), block, 1 );
+
+    }
 
 }
 
@@ -983,6 +1005,14 @@ void gost12_15::LSXEncryptData( uint8_t* data )
     }
 
     XTransformation( data, data, roundKeys[9]);
+
+}
+
+
+void gost12_15::setLibgost15(bool state)
+{
+
+    isLibgost15Enabled = state;
 
 }
 

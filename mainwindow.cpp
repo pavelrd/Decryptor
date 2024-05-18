@@ -627,6 +627,7 @@ void MainWindow::on_radioButton_change_clicked()
 {
     if(ui->radioButton_change->isChecked())
     {
+       ui->checkBox_libgost15->setEnabled(true);
        ui->lineEdit_sync->setStyleSheet("QLineEdit { background: rgb(255, 255, 255); selection-background-color: rgb(0, 0, 255); }");
        ui->lineEdit_sync->clear();
        ui->lineEdit_sync->setEnabled(false);
@@ -644,9 +645,9 @@ void MainWindow::on_radioButton_gamma_clicked()
 {
     if(ui->radioButton_gamma->isChecked())
     {
+        ui->checkBox_libgost15->setEnabled(false);
         ui->lineEdit_sync->setEnabled(true);
         ui->label_sync->setEnabled(true);
-        ui->spinBox_threadCount->setValue(1);
         ui->spinBox_threadCount->setEnabled(false);
     }
 }
@@ -755,5 +756,24 @@ bool MainWindow::openFile(QFile* file, QFile::OpenMode flags ,  QString errorMes
         return true;
     }
 
+}
+
+
+void MainWindow::on_checkBox_libgost15_stateChanged(int arg1)
+{
+    if( arg1 )
+    {
+        for(int i = 0 ; i < MAX_THREAD_COUNT;i++)
+        {
+            g[i].setLibgost15(true);
+        }
+    }
+    else
+    {
+        for(int i = 0 ; i < MAX_THREAD_COUNT;i++)
+        {
+            g[i].setLibgost15(false);
+        }
+    }
 }
 
