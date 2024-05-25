@@ -46,9 +46,6 @@ private:
     void STransformation(uint8_t *outData, uint8_t *data);
     void XTransformation(uint8_t *out_data, uint8_t *data, uint8_t *key);
 
-    vector<uint8_t> imitoGeneration(vector<uint8_t> data, vector<vector<uint8_t>> roundKeys);
-    vector<uint8_t> getImitoKey(vector<vector<uint8_t>> roundKeys);
-
     uint8_t lFunc(uint8_t *data);
 
     uint8_t inverselFunc(uint8_t *data);
