@@ -466,7 +466,7 @@ void MainWindow::encryptShow(bool isEncrypt)
 
     int threadCount = ui->spinBox_threadCount->value();
 
-    if( threadCount > 1 )
+    if( ( sourceFiles[0]->size() >= 65535 ) && ( threadCount > 1 ) )
     {
         workerCompteteCounter++;
         if( workerCompteteCounter < ui->spinBox_threadCount->value() )
