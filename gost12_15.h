@@ -73,6 +73,9 @@ private:
     uint8_t roundKeys[10][16] = {{0}};
     uint8_t roundConsts[32][16] = {{0}};
 
+    alignas(16) uint8_t libgost15_encrypt_roundKeys[10 * 16] = {0};
+    alignas(16) uint8_t libgost15_decrypt_roundKeys[10 * 16] = {0};
+
     uint8_t sync[16] = {0};
 
     vector<uint8_t> gammaSync;

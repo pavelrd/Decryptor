@@ -658,14 +658,24 @@ void gost12_15::setKey(const char* key)
 
     vector<uint8_t> generalKey(32, 0);
 
+    uint8_t libgost15_key[32] = {0};
+
     for( unsigned int i = 0 ; ( i < strlen(key) ) && ( i < 32) ; i++ )
     {
         generalKey[i] = key[i];
+        libgost15_key[i] = key[i];
     }
 
     initRoundConsts();
 
     generatingRoundKeys(generalKey);
+
+    // ------- Для библиотеки libgost15
+
+    lg15_scheduleEncryptionRoundKeys(libgost15_encrypt_roundKeys, libgost15_key );
+    lg15_scheduleDecryptionRoundKeys(libgost15_decrypt_roundKeys, libgost15_key );
+
+    // -------
 
     keySetted = true;
 
@@ -673,7 +683,10 @@ void gost12_15::setKey(const char* key)
 
 void gost12_15::setKey_HEX(const char* key)
 {
+
     vector<uint8_t> generalKey(32, 0);
+
+    uint8_t libgost15_key[32] = {0};
 
     for( unsigned int i = 0 ; ( i < strlen(key) ) && ( i < 32) ; i++ )
     {
@@ -687,7 +700,9 @@ void gost12_15::setKey_HEX(const char* key)
             bufstr[1] = key[i+1];
         }
 
-        generalKey[i] = strtol(bufstr, NULL, 16);
+        generalKey[i]    = strtol(bufstr, NULL, 16);
+
+        libgost15_key[i] = strtol(bufstr, NULL, 16);
 
     }
 
@@ -695,7 +710,15 @@ void gost12_15::setKey_HEX(const char* key)
 
     generatingRoundKeys(generalKey);
 
+    // ------- Для библиотеки libgost15
+
+    lg15_scheduleEncryptionRoundKeys(libgost15_encrypt_roundKeys, libgost15_key );
+    lg15_scheduleDecryptionRoundKeys(libgost15_decrypt_roundKeys, libgost15_key );
+
+    // -------
+
     keySetted = true;
+
 }
 
 void gost12_15::setSync(const char *_sync)
@@ -761,7 +784,7 @@ void gost12_15::encrypt(uint8_t* encryptedBlock, uint8_t* block)
 
         memcpy(encryptedBlock, block, 16 );
 
-        lg15_encryptBlocks( (uint8_t*)&(roundKeys[0][0]), encryptedBlock, 1 );
+        lg15_encryptBlocks( libgost15_encrypt_roundKeys, encryptedBlock, 1 );
 
     }
 
@@ -790,7 +813,7 @@ void gost12_15::decrypt(uint8_t* block, uint8_t* encryptedBlock)
 
         memcpy( block, encryptedBlock, 16 );
 
-        lg15_decryptBlocks( (uint8_t*)&(roundKeys[0][0]), block, 1 );
+        lg15_decryptBlocks( libgost15_decrypt_roundKeys, block, 1 );
 
     }
 
